@@ -22,19 +22,23 @@ app.get('/health', (req, res) => {
 });
 
 // Import API routes
-import { testBubbleConnection, discoverTables, getSampleData } from './api/test/bubble.js';
+import { testBubbleConnection, discoverTables, getSampleData as getBubbleSampleData } from './api/test/bubble.js';
 import { debugEnvironment } from './api/test/debug.js';
 import { runDiscovery, getDiscoveryStatus } from './api/test/discovery.js';
+import { getDiscoveryResults, getSampleData as getDiscoverySampleData, getAllSamples } from './api/test/discovery-summary.js';
 
 // Test endpoints
 app.get('/api/test/bubble', testBubbleConnection);
 app.get('/api/test/discover-tables', discoverTables);
-app.get('/api/test/sample-data', getSampleData);
+app.get('/api/test/sample-data', getBubbleSampleData);
 app.get('/api/test/debug', debugEnvironment);
 
 // Discovery endpoints
 app.post('/api/discovery/run', runDiscovery);
 app.get('/api/discovery/status', getDiscoveryStatus);
+app.get('/api/discovery/results', getDiscoveryResults);
+app.get('/api/discovery/samples', getAllSamples);
+app.get('/api/discovery/sample/:dataType', getDiscoverySampleData);
 
 app.get('/api/test/health', (req, res) => {
   res.json({
