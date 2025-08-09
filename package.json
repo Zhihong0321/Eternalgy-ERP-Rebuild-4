@@ -10,7 +10,8 @@
     "build": "npm install && npx prisma generate",
     "prisma:push": "npx prisma db push",
     "prisma:generate": "npx prisma generate",
-    "discovery": "node scripts/bubble-api-discovery.js"
+    "discovery": "node scripts/bubble-api-discovery.js",
+    "data-dictionary": "node scripts/bubble-data-dictionary.js"
   },
   "dependencies": {
     "express": "^4.18.2",
