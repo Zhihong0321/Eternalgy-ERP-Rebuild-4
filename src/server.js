@@ -28,6 +28,7 @@ import { runDiscovery, getDiscoveryStatus } from './api/test/discovery.js';
 import { getDiscoveryResults, getSampleData as getDiscoverySampleData, getAllSamples } from './api/test/discovery-summary.js';
 import { generateDataDictionary, getDataDictionaryStatus, getTableDetails } from './api/discovery/data-dictionary.js';
 import { testSyncConnection, runQuickSync, getSyncStatus, testFieldConversion, getAllSyncedRecords, getSyncedRecordsByType, getSyncSummary } from './api/sync/sync.js';
+import { debugSync } from './api/sync/debug.js';
 
 // Test endpoints
 app.get('/api/test/bubble', testBubbleConnection);
@@ -57,6 +58,9 @@ app.get('/api/sync/test-fields', testFieldConversion);
 app.get('/api/sync/records', getAllSyncedRecords);
 app.get('/api/sync/records/:dataType', getSyncedRecordsByType);
 app.get('/api/sync/summary', getSyncSummary);
+
+// Debug endpoint (no database dependency)
+app.get('/api/sync/debug', debugSync);
 
 app.get('/api/test/health', (req, res) => {
   res.json({
