@@ -9,4 +9,17 @@ datasource db {
 }
 
 // This schema will be regenerated dynamically by the sync engine
-// Initial empty schema for Railway deployment
+// Basic model for initial deployment
+
+model SyncStatus {
+  id        String   @id @default(cuid())
+  running   Boolean  @default(false)
+  progress  Int      @default(0)
+  currentTable String?
+  lastSync  DateTime?
+  error     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("sync_status")
+}
