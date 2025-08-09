@@ -27,6 +27,7 @@ import { debugEnvironment } from './api/test/debug.js';
 import { runDiscovery, getDiscoveryStatus } from './api/test/discovery.js';
 import { getDiscoveryResults, getSampleData as getDiscoverySampleData, getAllSamples } from './api/test/discovery-summary.js';
 import { generateDataDictionary, getDataDictionaryStatus, getTableDetails } from './api/discovery/data-dictionary.js';
+import { testSyncConnection, runQuickSync, getSyncStatus, testFieldConversion } from './api/sync/sync.js';
 
 // Test endpoints
 app.get('/api/test/bubble', testBubbleConnection);
@@ -45,6 +46,12 @@ app.get('/api/discovery/sample/:dataType', getDiscoverySampleData);
 app.post('/api/data-dictionary/generate', generateDataDictionary);
 app.get('/api/data-dictionary/status', getDataDictionaryStatus);
 app.get('/api/data-dictionary/table/:tableName', getTableDetails);
+
+// Sync endpoints
+app.get('/api/sync/test-connection', testSyncConnection);
+app.post('/api/sync/quick', runQuickSync);
+app.get('/api/sync/status', getSyncStatus);
+app.get('/api/sync/test-fields', testFieldConversion);
 
 app.get('/api/test/health', (req, res) => {
   res.json({
