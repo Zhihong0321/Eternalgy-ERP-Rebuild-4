@@ -1,0 +1,28 @@
+{
+  "name": "eternalgy-erp-retry3",
+  "version": "1.0.0",
+  "description": "Eternalgy ERP 2.0 - Bubble.io to PostgreSQL Sync System",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.js",
+    "start": "node src/server.js",
+    "build": "npm install && npx prisma generate",
+    "prisma:push": "npx prisma db push",
+    "prisma:generate": "npx prisma generate"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "prisma": "^5.7.1",
+    "@prisma/client": "^5.7.1",
+    "axios": "^1.6.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
