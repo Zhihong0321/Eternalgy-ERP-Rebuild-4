@@ -23,11 +23,13 @@ app.get('/health', (req, res) => {
 
 // Import API routes
 import { testBubbleConnection, discoverTables, getSampleData } from './api/test/bubble.js';
+import { debugEnvironment } from './api/test/debug.js';
 
 // Test endpoints
 app.get('/api/test/bubble', testBubbleConnection);
 app.get('/api/test/discover-tables', discoverTables);
 app.get('/api/test/sample-data', getSampleData);
+app.get('/api/test/debug', debugEnvironment);
 
 app.get('/api/test/health', (req, res) => {
   res.json({
