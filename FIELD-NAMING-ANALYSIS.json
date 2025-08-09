@@ -1,0 +1,619 @@
+{
+  "analysis": {
+    "timestamp": "2025-08-09T09:08:27.456Z",
+    "totalFields": 35,
+    "validFields": 23,
+    "invalidFields": 12,
+    "edgeCases": [
+      {
+        "original": "_id",
+        "camelCase": "id",
+        "safePrisma": "idField",
+        "issues": [
+          "Reserved word in Prisma/SQL"
+        ],
+        "category": "reservedWords",
+        "isValid": false
+      },
+      {
+        "original": "2nd Payment %",
+        "camelCase": "2ndPayment",
+        "safePrisma": "f2ndPayment",
+        "issues": [
+          "Starts with number",
+          "Invalid Prisma field name pattern"
+        ],
+        "category": "startsWithNumber",
+        "isValid": false
+      },
+      {
+        "original": "1st Payment %",
+        "camelCase": "1stPayment",
+        "safePrisma": "f1stPayment",
+        "issues": [
+          "Starts with number",
+          "Invalid Prisma field name pattern"
+        ],
+        "category": "startsWithNumber",
+        "isValid": false
+      },
+      {
+        "original": "123 Field",
+        "camelCase": "123Field",
+        "safePrisma": "f123Field",
+        "issues": [
+          "Starts with number",
+          "Invalid Prisma field name pattern"
+        ],
+        "category": "startsWithNumber",
+        "isValid": false
+      },
+      {
+        "original": "select",
+        "camelCase": "select",
+        "safePrisma": "selectField",
+        "issues": [
+          "Reserved word in Prisma/SQL"
+        ],
+        "category": "reservedWords",
+        "isValid": false
+      },
+      {
+        "original": "data",
+        "camelCase": "data",
+        "safePrisma": "dataField",
+        "issues": [
+          "Reserved word in Prisma/SQL"
+        ],
+        "category": "reservedWords",
+        "isValid": false
+      },
+      {
+        "original": "",
+        "camelCase": "",
+        "safePrisma": "field_g1kxzf",
+        "issues": [
+          "Empty or whitespace-only field name",
+          "Invalid Prisma field name pattern"
+        ],
+        "category": "empty",
+        "isValid": false
+      },
+      {
+        "original": "   ",
+        "camelCase": "",
+        "safePrisma": "field_1dv5uh",
+        "issues": [
+          "Empty or whitespace-only field name",
+          "Invalid Prisma field name pattern"
+        ],
+        "category": "empty",
+        "isValid": false
+      },
+      {
+        "original": "中文字段",
+        "camelCase": "",
+        "safePrisma": "field_bh0p5l",
+        "issues": [
+          "Contains non-ASCII characters",
+          "Invalid Prisma field name pattern"
+        ],
+        "category": "nonAscii",
+        "isValid": false
+      },
+      {
+        "original": "émojis_🚀",
+        "camelCase": "mojis",
+        "safePrisma": "emojis",
+        "issues": [
+          "Contains non-ASCII characters"
+        ],
+        "category": "nonAscii",
+        "isValid": false
+      },
+      {
+        "original": "123",
+        "camelCase": "123",
+        "safePrisma": "f123",
+        "issues": [
+          "Starts with number",
+          "Invalid Prisma field name pattern"
+        ],
+        "category": "startsWithNumber",
+        "isValid": false
+      },
+      {
+        "original": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "camelCase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "safePrisma": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_qq4a4",
+        "issues": [
+          "Too long (100 > 63)"
+        ],
+        "category": "tooLong",
+        "isValid": false
+      }
+    ]
+  },
+  "categories": {
+    "valid": [
+      {
+        "original": "Modified Date",
+        "camelCase": "modifiedDate",
+        "safePrisma": "modifiedDate",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "check in report today",
+        "camelCase": "checkInReportToday",
+        "safePrisma": "checkInReportToday",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "Profile Picture",
+        "camelCase": "profilePicture",
+        "safePrisma": "profilePicture",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "Access Level",
+        "camelCase": "accessLevel",
+        "safePrisma": "accessLevel",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "user_signed_up",
+        "camelCase": "usersignedup",
+        "safePrisma": "usersignedup",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "Locked Package?",
+        "camelCase": "lockedPackage",
+        "safePrisma": "lockedPackage",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "Commission Paid?",
+        "camelCase": "commissionPaid",
+        "safePrisma": "commissionPaid",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "Product Warranty (Desc)",
+        "camelCase": "productWarrantyDesc",
+        "safePrisma": "productWarrantyDesc",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "TREE SEED",
+        "camelCase": "treeSeed",
+        "safePrisma": "treeSeed",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "?status",
+        "camelCase": "status",
+        "safePrisma": "status",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "/path/to/field",
+        "camelCase": "pathtofield",
+        "safePrisma": "pathtofield",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "field-name",
+        "camelCase": "fieldname",
+        "safePrisma": "fieldname",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "field@email.com",
+        "camelCase": "fieldemailcom",
+        "safePrisma": "fieldemailcom",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "field name with many spaces and very long text that exceeds normal limits",
+        "camelCase": "fieldNameWithManySpacesAndVeryLongTextThatExceedsNormalLimits",
+        "safePrisma": "fieldNameWithManySpacesAndVeryLongTextThatExceedsNormalLimits",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "$$price",
+        "camelCase": "price",
+        "safePrisma": "price",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "field\\backslash",
+        "camelCase": "fieldbackslash",
+        "safePrisma": "fieldbackslash",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "field\"quotes\"",
+        "camelCase": "fieldquotes",
+        "safePrisma": "fieldquotes",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "field[brackets]",
+        "camelCase": "fieldbrackets",
+        "safePrisma": "fieldbrackets",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "field{braces}",
+        "camelCase": "fieldbraces",
+        "safePrisma": "fieldbraces",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "field|pipe",
+        "camelCase": "fieldpipe",
+        "safePrisma": "fieldpipe",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "field+plus",
+        "camelCase": "fieldplus",
+        "safePrisma": "fieldplus",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "field=equals",
+        "camelCase": "fieldequals",
+        "safePrisma": "fieldequals",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      },
+      {
+        "original": "null",
+        "camelCase": "null",
+        "safePrisma": "null",
+        "issues": [],
+        "category": "valid",
+        "isValid": true
+      }
+    ],
+    "startsWithNumber": [
+      {
+        "original": "2nd Payment %",
+        "camelCase": "2ndPayment",
+        "safePrisma": "f2ndPayment",
+        "issues": [
+          "Starts with number",
+          "Invalid Prisma field name pattern"
+        ],
+        "category": "startsWithNumber",
+        "isValid": false
+      },
+      {
+        "original": "1st Payment %",
+        "camelCase": "1stPayment",
+        "safePrisma": "f1stPayment",
+        "issues": [
+          "Starts with number",
+          "Invalid Prisma field name pattern"
+        ],
+        "category": "startsWithNumber",
+        "isValid": false
+      },
+      {
+        "original": "123 Field",
+        "camelCase": "123Field",
+        "safePrisma": "f123Field",
+        "issues": [
+          "Starts with number",
+          "Invalid Prisma field name pattern"
+        ],
+        "category": "startsWithNumber",
+        "isValid": false
+      },
+      {
+        "original": "123",
+        "camelCase": "123",
+        "safePrisma": "f123",
+        "issues": [
+          "Starts with number",
+          "Invalid Prisma field name pattern"
+        ],
+        "category": "startsWithNumber",
+        "isValid": false
+      }
+    ],
+    "containsInvalidChars": [],
+    "reservedWords": [
+      {
+        "original": "_id",
+        "camelCase": "id",
+        "safePrisma": "idField",
+        "issues": [
+          "Reserved word in Prisma/SQL"
+        ],
+        "category": "reservedWords",
+        "isValid": false
+      },
+      {
+        "original": "select",
+        "camelCase": "select",
+        "safePrisma": "selectField",
+        "issues": [
+          "Reserved word in Prisma/SQL"
+        ],
+        "category": "reservedWords",
+        "isValid": false
+      },
+      {
+        "original": "data",
+        "camelCase": "data",
+        "safePrisma": "dataField",
+        "issues": [
+          "Reserved word in Prisma/SQL"
+        ],
+        "category": "reservedWords",
+        "isValid": false
+      }
+    ],
+    "tooLong": [
+      {
+        "original": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "camelCase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "safePrisma": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_qq4a4",
+        "issues": [
+          "Too long (100 > 63)"
+        ],
+        "category": "tooLong",
+        "isValid": false
+      }
+    ],
+    "empty": [
+      {
+        "original": "",
+        "camelCase": "",
+        "safePrisma": "field_g1kxzf",
+        "issues": [
+          "Empty or whitespace-only field name",
+          "Invalid Prisma field name pattern"
+        ],
+        "category": "empty",
+        "isValid": false
+      },
+      {
+        "original": "   ",
+        "camelCase": "",
+        "safePrisma": "field_1dv5uh",
+        "issues": [
+          "Empty or whitespace-only field name",
+          "Invalid Prisma field name pattern"
+        ],
+        "category": "empty",
+        "isValid": false
+      }
+    ],
+    "nonAscii": [
+      {
+        "original": "中文字段",
+        "camelCase": "",
+        "safePrisma": "field_bh0p5l",
+        "issues": [
+          "Contains non-ASCII characters",
+          "Invalid Prisma field name pattern"
+        ],
+        "category": "nonAscii",
+        "isValid": false
+      },
+      {
+        "original": "émojis_🚀",
+        "camelCase": "mojis",
+        "safePrisma": "emojis",
+        "issues": [
+          "Contains non-ASCII characters"
+        ],
+        "category": "nonAscii",
+        "isValid": false
+      }
+    ]
+  },
+  "fallbackStrategy": {
+    "rules": [
+      {
+        "rule": "Remove non-ASCII characters",
+        "description": "Convert accented characters to ASCII equivalents, remove emojis and unicode",
+        "example": {
+          "input": "émojis_🚀",
+          "output": "emojis"
+        }
+      },
+      {
+        "rule": "Strip invalid characters",
+        "description": "Remove all characters except a-z, A-Z, 0-9, and spaces",
+        "example": {
+          "input": "field@email.com",
+          "output": "fieldemailcom"
+        }
+      },
+      {
+        "rule": "Normalize spaces",
+        "description": "Replace multiple spaces with single space, trim edges",
+        "example": {
+          "input": "  multiple   spaces  ",
+          "output": "multiple spaces"
+        }
+      },
+      {
+        "rule": "Convert to camelCase",
+        "description": "Split on spaces, lowercase first word, capitalize subsequent words",
+        "example": {
+          "input": "Modified Date",
+          "output": "modifiedDate"
+        }
+      },
+      {
+        "rule": "Fix numeric start",
+        "description": "Prefix with \"f\" if field name starts with a number",
+        "example": {
+          "input": "2nd Payment %",
+          "output": "f2ndPayment"
+        }
+      },
+      {
+        "rule": "Handle reserved words",
+        "description": "Append \"Field\" suffix to Prisma/SQL reserved words",
+        "example": {
+          "input": "data",
+          "output": "dataField"
+        }
+      },
+      {
+        "rule": "Truncate long names",
+        "description": "Truncate to 57 chars + 6-char suffix if exceeds PostgreSQL limit",
+        "example": {
+          "input": "very long field name...",
+          "output": "veryLongFieldName..._abc123"
+        }
+      },
+      {
+        "rule": "Ultimate fallback",
+        "description": "Generate random field name if all else fails",
+        "example": {
+          "input": "???",
+          "output": "field_abc12345"
+        }
+      }
+    ],
+    "examples": [
+      {
+        "original": "_id",
+        "currentResult": "id",
+        "improvedResult": "idField",
+        "issues": [
+          "Reserved word in Prisma/SQL"
+        ]
+      },
+      {
+        "original": "2nd Payment %",
+        "currentResult": "2ndPayment",
+        "improvedResult": "f2ndPayment",
+        "issues": [
+          "Starts with number",
+          "Invalid Prisma field name pattern"
+        ]
+      },
+      {
+        "original": "1st Payment %",
+        "currentResult": "1stPayment",
+        "improvedResult": "f1stPayment",
+        "issues": [
+          "Starts with number",
+          "Invalid Prisma field name pattern"
+        ]
+      },
+      {
+        "original": "123 Field",
+        "currentResult": "123Field",
+        "improvedResult": "f123Field",
+        "issues": [
+          "Starts with number",
+          "Invalid Prisma field name pattern"
+        ]
+      },
+      {
+        "original": "select",
+        "currentResult": "select",
+        "improvedResult": "selectField",
+        "issues": [
+          "Reserved word in Prisma/SQL"
+        ]
+      },
+      {
+        "original": "data",
+        "currentResult": "data",
+        "improvedResult": "dataField",
+        "issues": [
+          "Reserved word in Prisma/SQL"
+        ]
+      },
+      {
+        "original": "",
+        "currentResult": "",
+        "improvedResult": "field_g1kxzf",
+        "issues": [
+          "Empty or whitespace-only field name",
+          "Invalid Prisma field name pattern"
+        ]
+      },
+      {
+        "original": "   ",
+        "currentResult": "",
+        "improvedResult": "field_1dv5uh",
+        "issues": [
+          "Empty or whitespace-only field name",
+          "Invalid Prisma field name pattern"
+        ]
+      },
+      {
+        "original": "中文字段",
+        "currentResult": "",
+        "improvedResult": "field_bh0p5l",
+        "issues": [
+          "Contains non-ASCII characters",
+          "Invalid Prisma field name pattern"
+        ]
+      },
+      {
+        "original": "émojis_🚀",
+        "currentResult": "mojis",
+        "improvedResult": "emojis",
+        "issues": [
+          "Contains non-ASCII characters"
+        ]
+      }
+    ]
+  }
+}

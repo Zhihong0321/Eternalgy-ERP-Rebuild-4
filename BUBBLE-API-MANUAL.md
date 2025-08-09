@@ -3,6 +3,22 @@
 **Discovery Status**: ✅ Complete - 7 data types found, 0 errors  
 **Session**: Implementation Mode - Discovery Phase  
 
+## 📋 DISCOVERY RESULTS LOCATION
+
+**For AI Reference**: The complete discovery results and sample data can be found at:
+
+| Resource | Location | Description |
+|----------|----------|--------------|
+| **Discovery Results** | `./BUBBLE-API-DISCOVERY-RESULTS.json` | Complete discovery output with all data types, limitations, and metadata |
+| **Sample Data Files** | `./samples/` directory | Individual JSON files with sample records for each data type |
+| **Discovery Script** | `./scripts/bubble-api-discovery.js` | Source script for running new discoveries |
+| **Discovery API** | `/api/discovery` endpoint | Live discovery status and execution |
+
+**Note**: If discovery results don't exist, run the discovery process using:
+- Script: `node scripts/bubble-api-discovery.js`
+- API: `GET /api/discovery/run`
+- Status: `GET /api/discovery/status`
+
 ---
 
 ## 🔗 API CONNECTION DETAILS
