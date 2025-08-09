@@ -149,3 +149,145 @@ export async function testFieldConversion(req, res) {
     });
   }
 }
+
+/**
+ * Get all synced records from database
+ */
+export async function getAllSyncedRecords(req, res) {
+  try {
+    const service = initSyncService();
+    const limit = parseInt(req.query.limit) || 50;
+    const dataType = req.query.dataType;
+    
+    const where = dataType ? { dataType } : {};
+    
+    const records = await service.prisma.syncedRecord.findMany({
+      where,
+      take: limit,
+      orderBy: { syncedAt: 'desc' },
+      select: {
+        id: true,
+        bubbleId: true,
+        dataType: true,
+        rawData: true,
+        processedData: true,
+        syncedAt: true
+      }
+    });
+    
+    const total = await service.prisma.syncedRecord.count({ where });
+    
+    res.json({
+      success: true,
+      records,
+      pagination: {
+        total,
+        limit,
+        returned: records.length
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+/**
+ * Get synced records by data type
+ */
+export async function getSyncedRecordsByType(req, res) {
+  try {
+    const service = initSyncService();
+    const dataType = req.params.dataType;
+    const limit = parseInt(req.query.limit) || 10;
+    
+    const records = await service.prisma.syncedRecord.findMany({
+      where: { dataType },
+      take: limit,
+      orderBy: { syncedAt: 'desc' },
+      select: {
+        id: true,
+        bubbleId: true,
+        dataType: true,
+        rawData: true,
+        processedData: true,
+        syncedAt: true
+      }
+    });
+    
+    const total = await service.prisma.syncedRecord.count({ where: { dataType } });
+    
+    res.json({
+      success: true,
+      dataType,
+      records,
+      pagination: {
+        total,
+        limit,
+        returned: records.length
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+/**
+ * Get sync summary statistics
+ */
+export async function getSyncSummary(req, res) {
+  try {
+    const service = initSyncService();
+    
+    // Get total records
+    const totalRecords = await service.prisma.syncedRecord.count();
+    
+    // Get records by data type
+    const recordsByType = await service.prisma.syncedRecord.groupBy({
+      by: ['dataType'],
+      _count: {
+        dataType: true
+      },
+      orderBy: {
+        _count: {
+          dataType: 'desc'
+        }
+      }
+    });
+    
+    // Get last sync time
+    const lastSync = await service.prisma.syncedRecord.findFirst({
+      orderBy: { syncedAt: 'desc' },
+      select: { syncedAt: true }
+    });
+    
+    res.json({
+      success: true,
+      summary: {
+        totalRecords,
+        dataTypes: recordsByType.length,
+        lastSync: lastSync?.syncedAt,
+        recordsByType: recordsByType.map(item => ({
+          dataType: item.dataType,
+          count: item._count.dataType
+        }))
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+}

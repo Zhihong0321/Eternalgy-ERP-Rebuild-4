@@ -107,24 +107,46 @@ export class SimpleSyncService {
   }
 
   /**
-   * Process a single record (for now, just log it)
+   * Process a single record and save to database
    */
   async processRecord(dataType, record) {
-    // For now, just analyze the fields
-    const fields = Object.keys(record);
-    const safeFields = {};
-    
-    fields.forEach(field => {
-      const safeName = this.toSafeFieldName(field);
-      safeFields[safeName] = record[field];
-    });
+    try {
+      // Convert field names to safe versions
+      const fields = Object.keys(record);
+      const processedData = {};
+      
+      fields.forEach(field => {
+        const safeName = this.toSafeFieldName(field);
+        processedData[safeName] = record[field];
+      });
 
-    // TODO: Save to database once we have proper models
-    console.log(`${dataType} record:`, {
-      originalFields: fields.length,
-      bubbleId: record._id,
-      safeFields: Object.keys(safeFields).slice(0, 3) // Show first 3 field names
-    });
+      // Save to database using upsert (create or update)
+      const syncedRecord = await this.prisma.syncedRecord.upsert({
+        where: { bubbleId: record._id },
+        update: {
+          rawData: record,
+          processedData: processedData,
+          updatedAt: new Date()
+        },
+        create: {
+          bubbleId: record._id,
+          dataType: dataType,
+          rawData: record,
+          processedData: processedData
+        }
+      });
+
+      console.log(`✅ Saved ${dataType} record:`, {
+        id: syncedRecord.id,
+        bubbleId: record._id,
+        fields: fields.length,
+        sampleFields: Object.keys(processedData).slice(0, 3)
+      });
+      
+    } catch (error) {
+      console.error(`❌ Failed to save ${dataType} record:`, error.message);
+      throw error;
+    }
   }
 
   /**

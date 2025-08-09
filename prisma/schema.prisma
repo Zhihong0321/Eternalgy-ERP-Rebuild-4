@@ -23,3 +23,19 @@ model SyncStatus {
   
   @@map("sync_status")
 }
+
+// Generic model to store synced records from Bubble
+model SyncedRecord {
+  id          String   @id @default(cuid())
+  bubbleId    String   @unique @map("bubble_id")
+  dataType    String   @map("data_type")
+  rawData     Json     @map("raw_data")    // Original data from Bubble
+  processedData Json?  @map("processed_data") // Processed data with safe field names
+  
+  syncedAt    DateTime @default(now()) @map("synced_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@index([dataType])
+  @@index([bubbleId])
+  @@map("synced_records")
+}
