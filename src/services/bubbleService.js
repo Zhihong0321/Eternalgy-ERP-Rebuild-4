@@ -57,85 +57,63 @@ class BubbleService {
     }
   }
 
-  // EXHAUSTIVE discovery - finds ALL available data types (50+ expected)
-  // Based on proven patterns that worked in previous successful attempts
+  // PROPER discovery using Bubble's meta endpoint - finds ALL available data types
+  // This is the correct method that previous successful attempts used
   async discoverAllDataTypes() {
-    console.log('🔍 Starting EXHAUSTIVE data type discovery...');
-    console.log('⚠️  Expected: 50+ data types (not 7!)');
+    console.log('🔍 Starting PROPER data type discovery using /api/1.1/meta...');
+    console.log('✅ Using official Bubble meta endpoint (not brute force)');
     
     const discoveredTypes = [];
     const failedTypes = [];
+    let allDataTypeNames = [];
+
+    try {
+      // Step 1: Get the complete list of data types from meta endpoint
+      console.log('📡 Fetching meta information from Bubble...');
+      const metaResponse = await axios.get(`${this.baseUrl}/api/1.1/meta`, {
+        headers: this.getHeaders(),
+        timeout: this.timeout
+      });
+
+      // Extract data type names from the "get" array
+      allDataTypeNames = metaResponse.data?.get || [];
+      console.log(`📋 Found ${allDataTypeNames.length} data types in meta endpoint`);
+      console.log('🎯 Sample types:', allDataTypeNames.slice(0, 10).join(', '), '...');
+
+      if (allDataTypeNames.length === 0) {
+        throw new Error('Meta endpoint returned no data types');
+      }
+
+    } catch (error) {
+      console.error('❌ Failed to fetch meta endpoint:', error.message);
+      return {
+        discoveredTypes: [],
+        failedTypes: [{ name: 'meta-endpoint', error: error.message, status: error.response?.status }],
+        totalFound: 0,
+        searchMethod: 'meta-endpoint-failed',
+        timestamp: new Date().toISOString(),
+        summary: { withData: 0, empty: 0, total: 0 }
+      };
+    }
+
+    // Step 2: Test each data type for accessibility and data
+    console.log(`🔍 Testing accessibility of ${allDataTypeNames.length} discovered data types...`);
     
-    // Comprehensive list of common business entities
-    // Based on typical ERP/CRM systems and previous successful discoveries
-    const possibleTypes = [
-      // Core business entities
-      'user', 'customer', 'client', 'contact', 'person', 'individual',
-      'agent', 'sales_agent', 'representative', 'staff', 'employee', 'worker',
-      'invoice', 'bill', 'receipt', 'transaction', 'payment', 'refund',
-      'product', 'item', 'inventory', 'stock', 'asset', 'material',
-      'package', 'bundle', 'kit', 'set', 'group', 'collection',
-      'category', 'type', 'classification', 'tag', 'label',
-      'agreement', 'contract', 'deal', 'proposal', 'quote', 'estimate',
-      
-      // Extended business entities
-      'order', 'purchase_order', 'sales_order', 'work_order',
-      'supplier', 'vendor', 'partner', 'company', 'organization',
-      'project', 'task', 'activity', 'event', 'appointment', 'meeting',
-      'report', 'document', 'file', 'attachment', 'note', 'comment',
-      'lead', 'opportunity', 'prospect', 'campaign', 'marketing',
-      'ticket', 'issue', 'case', 'complaint', 'request', 'inquiry',
-      
-      // Financial entities
-      'account', 'ledger', 'journal', 'expense', 'cost', 'budget',
-      'commission', 'bonus', 'incentive', 'discount', 'promotion',
-      'tax', 'fee', 'charge', 'price', 'rate', 'tariff',
-      
-      // Operational entities
-      'warehouse', 'location', 'address', 'region', 'territory',
-      'department', 'division', 'unit', 'branch', 'office',
-      'role', 'position', 'permission', 'access', 'authorization',
-      'setting', 'configuration', 'preference', 'option', 'parameter',
-      
-      // Time-based entities
-      'schedule', 'calendar', 'timeline', 'milestone', 'deadline',
-      'period', 'term', 'season', 'quarter', 'year', 'month',
-      
-      // Communication entities
-      'email', 'message', 'notification', 'alert', 'reminder',
-      'call', 'phone', 'sms', 'chat', 'conversation',
-      
-      // Additional possibilities
-      'brand', 'model', 'variant', 'specification', 'feature',
-      'rating', 'review', 'feedback', 'survey', 'questionnaire',
-      'log', 'audit', 'history', 'record', 'entry', 'data',
-      'backup', 'archive', 'template', 'format', 'layout',
-      'workflow', 'process', 'procedure', 'step', 'phase',
-      
-      // Plural forms (Bubble might use these)
-      'users', 'customers', 'clients', 'contacts', 'agents',
-      'invoices', 'payments', 'products', 'items', 'packages',
-      'categories', 'agreements', 'contracts', 'orders'
-    ];
-
-    console.log(`🔍 Testing ${possibleTypes.length} possible data type names...`);
-
-    for (const type of possibleTypes) {
+    for (const typeName of allDataTypeNames) {
       try {
-        // Test endpoint accessibility
-        const endpoint = `/api/1.1/obj/${type}`;
+        const endpoint = `/api/1.1/obj/${typeName}`;
         const response = await axios.get(`${this.baseUrl}${endpoint}`, {
           headers: this.getHeaders(),
           timeout: this.timeout,
           params: { limit: 1 } // Minimal request to test accessibility
         });
 
-        // If we get here, the endpoint exists
+        // If we get here, the endpoint exists and is accessible
         const hasData = response.data?.response?.results?.length > 0;
         const dataCount = response.data?.response?.results?.length || 0;
         
         discoveredTypes.push({
-          name: type,
+          name: typeName,
           endpoint: endpoint,
           hasData: hasData,
           sampleCount: dataCount,
@@ -143,44 +121,43 @@ class BubbleService {
           testTimestamp: new Date().toISOString()
         });
 
-        console.log(`✅ Found: ${type} (${hasData ? 'with data' : 'empty'})`);
+        console.log(`✅ ${typeName}: ${hasData ? 'has data' : 'empty'}`);
         
         // Delay between requests to respect rate limits
         await this.delay();
         
       } catch (error) {
-        // Skip non-existent endpoints (404 is expected for many)
-        if (error.response?.status !== 404) {
-          failedTypes.push({
-            name: type,
-            error: error.message,
-            status: error.response?.status
-          });
-        }
+        failedTypes.push({
+          name: typeName,
+          error: error.message,
+          status: error.response?.status,
+          endpoint: `/api/1.1/obj/${typeName}`
+        });
+        
+        console.log(`❌ ${typeName}: ${error.response?.status || 'error'}`);
         
         // Small delay even for failed requests
         await this.delay(100);
       }
     }
 
-    console.log(`🎉 Discovery complete!`);
+    console.log(`🎉 Discovery complete using PROPER meta endpoint!`);
     console.log(`✅ Found ${discoveredTypes.length} accessible data types`);
     console.log(`❌ Failed: ${failedTypes.length} endpoints`);
-    
-    if (discoveredTypes.length < 20) {
-      console.warn('⚠️  WARNING: Expected 50+ data types, found fewer. May need expanded search patterns.');
-    }
+    console.log(`📊 Success rate: ${Math.round((discoveredTypes.length / allDataTypeNames.length) * 100)}%`);
 
     return {
       discoveredTypes,
       failedTypes,
       totalFound: discoveredTypes.length,
-      searchPatterns: possibleTypes.length,
+      searchMethod: 'meta-endpoint',
+      metaTypesCount: allDataTypeNames.length,
       timestamp: new Date().toISOString(),
       summary: {
         withData: discoveredTypes.filter(t => t.hasData).length,
         empty: discoveredTypes.filter(t => !t.hasData).length,
-        total: discoveredTypes.length
+        total: discoveredTypes.length,
+        failed: failedTypes.length
       }
     };
   }
