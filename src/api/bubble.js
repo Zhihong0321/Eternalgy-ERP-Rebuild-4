@@ -229,13 +229,15 @@ router.get('/', (req, res) => {
         method: 'POST',
         path: '/api/bubble/generate-schema',
         description: 'Generate and apply Prisma schema from discovered data types',
-        critical: 'This creates database tables - use carefully'
+        critical: 'This creates database tables - use carefully',
+        ready: true
       },
       previewSchema: {
         method: 'POST',
         path: '/api/bubble/preview-schema',
         description: 'Generate schema preview without applying to database',
-        safe: 'Preview only - no database changes'
+        safe: 'Preview only - no database changes',
+        ready: true
       },
       analyzeType: {
         method: 'GET',
@@ -244,7 +246,8 @@ router.get('/', (req, res) => {
         parameters: {
           dataType: 'Name of the data type to analyze',
           samples: 'Number of sample records to analyze (1-20, default: 5)'
-        }
+        },
+        ready: true
       }
     },
     environment: {
