@@ -48,6 +48,12 @@ app.get('/', (req, res) => {
         discoverTypes: '/api/bubble/discover-types',
         fetchData: '/api/bubble/fetch/{dataType}?limit=5'
       },
+      schema: {
+        createAll: 'POST /api/schema/create-all?maxTables=5',
+        recreateAll: 'POST /api/schema/recreate-all',
+        stats: '/api/schema/stats',
+        dropAll: 'DELETE /api/schema/drop-all?confirm=yes-drop-all-tables'
+      },
       sync: {
         singleTable: 'POST /api/sync/table/{tableName}?limit=5',
         batchSync: 'POST /api/sync/batch?globalLimit=5',
@@ -94,8 +100,10 @@ app.get('/deploy-status', (req, res) => {
 import bubbleRoutes from './api/bubble.js';
 import syncRoutes from './api/sync.js';
 import logsRoutes from './api/logs.js';
+import schemaRoutes from './api/schema.js';
 
 app.use('/api/bubble', bubbleRoutes);
+app.use('/api/schema', schemaRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/logs', logsRoutes);
 
