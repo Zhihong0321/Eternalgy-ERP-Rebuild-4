@@ -18,12 +18,18 @@
 - Ultra-simple approach: Bubble.io API → Prisma Schema → PostgreSQL
 
 ## Current Project State (10 Aug 2025)
-- Phase: Ready for sync engine implementation
-- API Discovery: ✅ Complete - 7 data types confirmed
-- API Key: ✅ Available (stored in config.memory)
-- Bubble Service: ✅ Working (API connectivity confirmed)
-- Missing: Prisma schema generation + sync service
-- Production URL: https://postgres-production-8226.up.railway.app
+- Phase: Step 1 - Bubble API Data Fetching Foundation
+- **CRITICAL**: User has 52+ data types, NEVER hardcode counts
+- API Key: ✅ Available b870d2b5ee6e6b39bcf99409c59c9e02 
+- Infrastructure: ✅ Complete (Railway + GitHub + PostgreSQL)
+- **Current Priority**: Dynamic discovery + selective fetching endpoints
+- Production URL: https://eternalgy-erp-retry3-production.up.railway.app
+
+## Project Context - TEMPORARY MIGRATION TOOL
+- **Purpose**: One-time data migration from Bubble to new ERP system
+- **Usage**: Limited sync during ERP 2.0 development, then full sync before launch
+- **Retirement**: Bubble ERP will be retired after new ERP launch
+- **Approach**: Simple API endpoints for easy testing and debugging
 
 ## Technology Stack
 - Frontend: TypeScript + React 18 + Vite + shadcn/ui + Tailwind CSS

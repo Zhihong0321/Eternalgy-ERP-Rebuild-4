@@ -19,11 +19,19 @@
 - ✅ All testing on Railway - NO LOCAL TESTING
 - ✅ Fail fast - stop sync on first error
 
-## DATA TYPES DISCOVERED (7 types confirmed)
-- user, invoice, payment, agent, package, product, category
-- All have complex field names with spaces and special characters
-- Rate limit: ~300ms between requests
+## ⚠️ CRITICAL: DYNAMIC DISCOVERY MANDATORY (NEVER HARDCODE COUNTS)
+🚨 **FAILURE PATTERN #24**: AI hardcoded 7 data types, created viral mindset across codebase
+🚨 **BUTTERFLY EFFECT**: Hardcoded count infected entire system, unfixable, caused restart #25
+
+✅ **CORRECT APPROACH**: ALWAYS discover data types dynamically
+✅ **USER HAS 52+ DATA TYPES**: Never assume count, always scan all available
+✅ **LIMITER ≠ COUNT**: Fetch limits are separate from discovery totals
+✅ **FUTURE-PROOF**: New Bubble data types must be discovered automatically
+
+- Complex field names with spaces and special characters
+- Rate limit: ~300ms between requests  
 - Max 100 records per request with cursor pagination
+- DISCOVERY MUST BE EXHAUSTIVE AND DYNAMIC
 
 ## Forbidden Actions
 - ❌ NO simpleFieldMapping.js or any field mapping service

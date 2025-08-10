@@ -45,3 +45,11 @@
 - Solution: Thorough planning and human collaboration
 - Never assume what user "probably" has or knows
 - Always verify before proceeding to implementation
+
+## 🚨 SPECIFIC FAILURE PATTERN: HARDCODED DATA TYPES (CRITICAL)
+- **Restart #24 Root Cause**: AI hardcoded only 7 data types
+- **Viral Effect**: Later sessions assumed total = 7, infected entire codebase
+- **Butterfly Effect**: Unfixable breaking changes, forced restart #25
+- **USER'S ACTUAL DATA**: 52+ data types in Bubble system
+- **SOLUTION**: ALWAYS use dynamic discovery, NEVER hardcode counts
+- **VERIFICATION**: Discovery endpoint must scan and find ALL available types

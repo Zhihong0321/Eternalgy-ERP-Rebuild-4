@@ -1,0 +1,93 @@
+# CODING STANDARDS MEMORY - DYNAMIC DISCOVERY ENFORCEMENT
+## Last Updated: 2025-08-10
+
+## 🚨 CRITICAL FAILURE PATTERN TO PREVENT
+
+### Restart #24 Fatal Error Pattern:
+```javascript
+// ❌ NEVER DO THIS - HARDCODED DEATH PATTERN
+const DATA_TYPES = ['user', 'invoice', 'payment', 'agent', 'package', 'product', 'category'];
+const BUBBLE_TYPES = 7; // VIRAL MINDSET - INFECTED ENTIRE CODEBASE
+```
+
+**Result**: Later AI sessions assumed total = 7, butterfly effect, unfixable, restart #25
+
+## ✅ MANDATORY CODING STANDARDS
+
+### 1. DYNAMIC DISCOVERY ONLY
+```javascript
+// ✅ ALWAYS DO THIS - DYNAMIC PATTERN
+async function discoverAllDataTypes() {
+  const types = [];
+  // Scan Bubble API systematically
+  // Return whatever exists - could be 52+, could be 100+
+  // ZERO assumptions about count
+  return types;
+}
+```
+
+### 2. LIMITER ≠ DISCOVERY COUNT
+```javascript
+// ✅ FETCH LIMITS ARE SEPARATE FROM DISCOVERY
+GET /api/bubble/fetch/invoice?limit=5      // Development: 5 records
+GET /api/bubble/fetch/invoice?limit=999999 // Production: All records
+// Limit has ZERO relationship to total data type count
+```
+
+### 3. EXPLICIT WARNINGS IN CODE
+```javascript
+// ⚠️ WARNING: User has 52+ data types in Bubble system
+// ⚠️ NEVER hardcode data type lists or counts
+// ⚠️ Previous restart #24 failed due to hardcoding 7 types
+// ⚠️ ALWAYS discover dynamically to prevent viral mindset
+```
+
+### 4. VARIABLE NAMING STANDARDS
+```javascript
+// ❌ NEVER use these variable names (imply fixed count)
+const TOTAL_TYPES = 7;
+const ALL_DATA_TYPES = [...];
+const BUBBLE_SCHEMAS = {...};
+
+// ✅ ALWAYS use these (imply dynamic discovery)
+const discoveredTypes = await discoverDataTypes();
+const availableEndpoints = await scanBubbleAPI();
+const foundDataTypes = await getAllAccessibleTypes();
+```
+
+## 🔍 CODE REVIEW CHECKLIST
+
+Before committing ANY code, verify:
+- [ ] No hardcoded arrays of data type names
+- [ ] No numeric constants related to data type counts
+- [ ] All discovery logic is dynamic and exhaustive
+- [ ] Fetch limits are parameterized and separate from discovery
+- [ ] Comments emphasize dynamic discovery approach
+- [ ] Variable names don't imply fixed counts
+
+## 📋 DOCUMENTATION STANDARDS
+
+### API Documentation:
+```markdown
+## Dynamic Discovery
+This endpoint discovers ALL available Bubble data types dynamically.
+It does NOT use a predefined list and will find new types automatically.
+
+**Note**: User has 52+ data types. Never assume a fixed count.
+```
+
+### Progress Updates:
+```markdown
+✅ Discovered 47 data types (dynamic scan)
+❌ Processing 7 predefined data types (WRONG)
+```
+
+## 🚨 EMERGENCY PROTOCOLS
+
+If you catch yourself or another AI:
+1. **Hardcoding data type lists** → Stop immediately
+2. **Using fixed counts** → Refactor to dynamic discovery  
+3. **Assuming "total = X"** → Verify with exhaustive scan
+4. **Building on previous hardcoded assumptions** → Start over with dynamic approach
+
+**Remember**: User has 52+ data types. The system MUST discover them ALL dynamically.
