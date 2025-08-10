@@ -1,0 +1,45 @@
+# PROJECT SPECIFICATION MEMORY
+## Core Objective
+- Create real-time, read-only mirror of Bubble.io application data → PostgreSQL database
+- Node.js backend + React/shadcn/ui frontend
+- Hosted exclusively on Railway.app
+
+## Non-Negotiable Principles
+- Bubble is Single Source of Truth - local ERP data always overwritten by Bubble
+- Unidirectional Sync - data flows ONLY Bubble → ERP, never back
+- Single User System - no authentication/multi-user features
+- Dynamic Discovery Mandatory - NO hardcoded table/field names
+- Railway-First Development - all dev/testing/deployment on Railway only
+
+## Architecture Authority - UPDATED BASED ON FAILURE ANALYSIS
+- Core sync logic defined in `bubble-sync-v3-psd.md` (lessons from 7-day failure)
+- Bubble API manual provides real API data patterns
+- PSD document is absolute authority on what NOT to do
+- Ultra-simple approach: Bubble.io API → Prisma Schema → PostgreSQL
+
+## Current Project State (10 Aug 2025)
+- Phase: Ready for sync engine implementation
+- API Discovery: ✅ Complete - 7 data types confirmed
+- API Key: ✅ Available (stored in config.memory)
+- Bubble Service: ✅ Working (API connectivity confirmed)
+- Missing: Prisma schema generation + sync service
+- Production URL: https://postgres-production-8226.up.railway.app
+
+## Technology Stack
+- Frontend: TypeScript + React 18 + Vite + shadcn/ui + Tailwind CSS
+- Backend: Node.js + Express + Prisma ORM
+- Database: PostgreSQL (Railway add-on)
+- Build: pnpm
+- Hosting: Railway.app only
+- CI/CD: Automatic deployment from GitHub
+
+## Build Phases
+1. Setup & API Validation
+2. Database & Sync Engine 
+3. Frontend UI
+
+## Success Criteria
+- Real-time sync Bubble → PostgreSQL
+- Dynamic schema discovery/generation
+- No local development/testing
+- Railway deployment working end-to-end

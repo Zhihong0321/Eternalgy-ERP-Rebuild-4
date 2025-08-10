@@ -1,120 +1,52 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-// Load environment variables
-dotenv.config();
-
-const execAsync = promisify(exec);
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.use(helmet());
 app.use(cors());
 app.use(express.json());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+});
+app.use(limiter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
-    status: 'healthy', 
+    status: 'OK', 
     timestamp: new Date().toISOString(),
-    service: 'eternalgy-erp-retry3'
-  });
-});
-
-// Import API routes
-import { testBubbleConnection, discoverTables, getSampleData as getBubbleSampleData } from './api/test/bubble.js';
-import { debugEnvironment } from './api/test/debug.js';
-import { runDiscovery, getDiscoveryStatus } from './api/test/discovery.js';
-import { getDiscoveryResults, getSampleData as getDiscoverySampleData, getAllSamples } from './api/test/discovery-summary.js';
-import { generateDataDictionary, getDataDictionaryStatus, getTableDetails } from './api/discovery/data-dictionary.js';
-import { testSyncConnection, runQuickSync, getSyncStatus, testFieldConversion, getAllSyncedRecords, getSyncedRecordsByType, getSyncSummary } from './api/sync/sync.js';
-import { debugSync } from './api/sync/debug.js';
-
-// Test endpoints
-app.get('/api/test/bubble', testBubbleConnection);
-app.get('/api/test/discover-tables', discoverTables);
-app.get('/api/test/sample-data', getBubbleSampleData);
-app.get('/api/test/debug', debugEnvironment);
-
-// Discovery endpoints
-app.post('/api/discovery/run', runDiscovery);
-app.get('/api/discovery/status', getDiscoveryStatus);
-app.get('/api/discovery/results', getDiscoveryResults);
-app.get('/api/discovery/samples', getAllSamples);
-app.get('/api/discovery/sample/:dataType', getDiscoverySampleData);
-
-// Data Dictionary endpoints
-app.post('/api/data-dictionary/generate', generateDataDictionary);
-app.get('/api/data-dictionary/status', getDataDictionaryStatus);
-app.get('/api/data-dictionary/table/:tableName', getTableDetails);
-
-// Sync endpoints
-app.get('/api/sync/test-connection', testSyncConnection);
-app.post('/api/sync/quick', runQuickSync);
-app.get('/api/sync/status', getSyncStatus);
-app.get('/api/sync/test-fields', testFieldConversion);
-
-// Database query endpoints
-app.get('/api/sync/records', getAllSyncedRecords);
-app.get('/api/sync/records/:dataType', getSyncedRecordsByType);
-app.get('/api/sync/summary', getSyncSummary);
-
-// Debug endpoint (no database dependency)
-app.get('/api/sync/debug', debugSync);
-
-app.get('/api/test/health', (req, res) => {
-  res.json({
-    status: 'API routes ready',
-    timestamp: new Date().toISOString(),
+    service: 'Eternalgy ERP Rebuild 4',
     environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Route not found',
-    path: req.originalUrl,
-    timestamp: new Date().toISOString()
+// Basic info endpoint
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Eternalgy ERP Rebuild 4',
+    description: 'Bubble.io to PostgreSQL sync system',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      sync: '/api/sync (coming soon)',
+      discovery: '/api/discovery (coming soon)'
+    }
   });
 });
 
-// Error handler
-app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(500).json({
-    error: 'Internal server error',
-    message: err.message,
-    timestamp: new Date().toISOString()
-  });
+// API routes will be added here
+// app.use('/api', apiRoutes);
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🌐 Health check: http://localhost:${PORT}/health`);
 });
-
-// Database migration function
-async function migrateDatabase() {
-  try {
-    console.log('🔄 Running database migration...');
-    const { stdout, stderr } = await execAsync('npx prisma db push --accept-data-loss');
-    if (stdout) console.log('Migration output:', stdout);
-    if (stderr) console.warn('Migration warnings:', stderr);
-    console.log('✅ Database migration completed');
-  } catch (error) {
-    console.error('❌ Database migration failed:', error.message);
-    console.warn('⚠️  Server will continue without database (some features may not work)');
-  }
-}
-
-// Start server
-async function startServer() {
-  app.listen(PORT, () => {
-    console.log(`🚀 Eternalgy ERP Server running on port ${PORT}`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  });
-}
-
-// Start the server
-startServer().catch(console.error);

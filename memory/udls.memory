@@ -1,0 +1,45 @@
+# UDLS (Unified Debug & Logging Strategy) MEMORY
+## Logging Requirements (MANDATORY)
+- All generated code MUST integrate UDLS-compliant logging
+- Code without UDLS logging is considered INCOMPLETE
+- Check UDLS.md document in project folder for full strategy
+
+## Core Logging Components
+- **Run ID**: Unique identifier for each execution/sync session
+- **Runtime Logs**: Real-time operation tracking
+- **Historical Logs**: Persistent log storage and retrieval
+- **HTTP Log Access**: API endpoints to access logs remotely
+
+## Implementation Requirements
+- Every sync operation must have Run ID tracking
+- All API endpoints must log requests/responses
+- Error logs must include full context (table, record, field)
+- Success metrics must be logged for monitoring
+
+## Log Format Standard
+```ts
+log: {
+  timestamp: new Date().toISOString(),
+  runId: string,
+  level: "INFO" | "ERROR" | "DEBUG" | "WARN",
+  context: "sync" | "api" | "schema" | "database",
+  message: string,
+  metadata: {
+    table?: string,
+    recordId?: string,
+    field?: string,
+    operation?: string
+  }
+}
+```
+
+## Required Endpoints
+- GET /api/logs/recent?limit=N - Recent logs
+- GET /api/logs/errors?limit=N - Error logs only
+- GET /api/logs/run/{runId} - Logs for specific run
+- All endpoints must work on Railway deployment
+
+## Before Implementation
+- MUST review UDLS.md document first
+- ALL code must integrate proper logging
+- NO code generation without UDLS compliance

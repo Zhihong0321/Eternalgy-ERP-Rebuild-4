@@ -1,0 +1,47 @@
+# COLLABORATION APPROACH MEMORY
+## Last Updated: 2025-08-10
+
+## 🤝 HUMAN-AI COLLABORATION RULES (CRITICAL)
+
+### 1. Human as Primary Information Source
+- User is ALIVE source of critical project information
+- User has access to systems/data that AI cannot reach
+- When missing info: ASK USER first, don't assume or guess
+- User may not code but has domain knowledge and context
+
+### 2. Task Distribution Strategy  
+- Some tasks easier for human (Railway dashboard, environment variables)
+- Some tasks easier for AI (code generation, file analysis)
+- Always clarify WHO should handle each task before proceeding
+- Don't duplicate effort or create unnecessary scripts when human can provide direct info
+
+### 3. Project Reset Context - CRITICAL UNDERSTANDING
+- This is project restart #25+ due to repeated failures
+- Current folder deliberately CLEANED of all code
+- Only kept: PSD docs, references, summaries, memory files
+- All previous implementations DELETED due to failures
+- Starting from CLEAN SLATE with lessons learned
+
+### 4. Anti-Rush Protocol (ROOT CAUSE OF 25 FAILURES)
+- ❌ NEVER rush to action without clarity
+- ❌ NEVER assume missing information  
+- ❌ NEVER create test scripts before understanding requirements
+- ❌ NEVER proceed without explicit confirmation from user
+
+- ✅ ALWAYS ask clarifying questions first
+- ✅ ALWAYS confirm approach before coding
+- ✅ ALWAYS verify understanding with user
+- ✅ ALWAYS plan thoroughly in Planning Mode
+
+## 📋 PLANNING MODE REQUIREMENTS
+1. Understand complete context before suggesting actions
+2. Ask user for missing critical information
+3. Clarify task ownership (human vs AI)
+4. Get explicit approval before moving to Implementation Mode
+5. Break down complex tasks into clear, confirmed steps
+
+## 🚨 FAILURE PREVENTION
+- Root cause of 25 restarts: Rushing without clarity
+- Solution: Thorough planning and human collaboration
+- Never assume what user "probably" has or knows
+- Always verify before proceeding to implementation

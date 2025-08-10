@@ -1,0 +1,48 @@
+# CRITICAL INSTRUCTIONS MEMORY
+## Absolute Prohibitions (CRITICAL FAILURE IF VIOLATED)
+- ❌ NO local servers (localhost, 127.0.0.1, npm start, vite, dev server)
+- ❌ NO local databases (SQLite, local MySQL/PostgreSQL/MongoDB)
+- ❌ NO localhost URLs, file:// paths, or local connection strings
+- ❌ NO local tests or mocks requiring local setup
+- ❌ NO local setup instructions or workflows
+
+## Sync Engine Rules (NON-NEGOTIABLE)
+- ✅ Use BubbleService for all API calls
+- ✅ Discover data types dynamically - NO HARDCODED TABLES
+- ✅ Generate Prisma schema using @map("Original Bubble Field")
+- ✅ Use toCamelCase() for Prisma field names
+- ✅ Apply schema via "prisma db push"
+- ✅ Sync via prisma.[model].upsert() using bubbleId as unique key
+- ✅ Soft delete: isDeleted = true
+- ✅ Overwrite local on conflict
+- ✅ One table at a time - no parallel sync
+- ✅ All testing on Railway - NO LOCAL TESTING
+- ✅ Fail fast - stop sync on first error
+
+## DATA TYPES DISCOVERED (7 types confirmed)
+- user, invoice, payment, agent, package, product, category
+- All have complex field names with spaces and special characters
+- Rate limit: ~300ms between requests
+- Max 100 records per request with cursor pagination
+
+## Forbidden Actions
+- ❌ NO simpleFieldMapping.js or any field mapping service
+- ❌ NO middleware between Bubble and Prisma
+- ❌ NO field name hashing, collision detection, or custom transforms
+- ❌ NO JSONB dumps - use structured schema
+- ❌ NO rate limit retries - let sync resume manually
+
+## Field Naming (EXACT IMPLEMENTATION)
+```ts
+function toCamelCase(str: string): string {
+  return str
+    .replace(/[^a-zA-Z0-9\s]/g, '')  // Remove %, _, etc.
+    .replace(/\s+/g, ' ')            // Normalize spaces
+    .split(' ')
+    .map((word, i) => {
+      if (i === 0) return word.toLowerCase();
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join('');
+}
+```

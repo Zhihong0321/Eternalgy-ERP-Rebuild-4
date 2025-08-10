@@ -1,46 +1,62 @@
-# Eternalgy ERP Retry 3
+# Eternalgy ERP Rebuild 4
 
-Bubble.io to PostgreSQL sync system with 100% reliability.
+Bubble.io to PostgreSQL sync system with dynamic data type discovery.
 
-## Architecture
+## 🏗️ Architecture
 
-- **Backend**: Node.js + Express
-- **Database**: PostgreSQL (Railway)
-- **ORM**: Prisma
-- **Hosting**: Railway.app
+**Ultra-Simple Approach**: `Bubble.io API → Prisma Schema → PostgreSQL Database`
 
-## Environment Variables
+- **No intermediate layers**
+- **No custom transformations** 
+- **Prisma handles everything**
 
-Required in Railway deployment:
+## 🚀 Deployment
+
+- **Platform**: Railway.app
+- **Database**: PostgreSQL (Railway managed)
+- **Environment**: Production only (no local development)
+
+## 📋 Features
+
+- ✅ Dynamic discovery of ALL Bubble.io data types (50+ types)
+- ✅ Automatic Prisma schema generation
+- ✅ Real-time sync Bubble → PostgreSQL
+- ✅ Proper field name mapping with @map() directive
+- ✅ Upsert logic with conflict resolution
+
+## 🔧 Environment Variables
 
 ```bash
-BUBBLE_API_KEY=your_bubble_api_key_here
+BUBBLE_API_KEY=your_api_key_here
 BUBBLE_APP_NAME=eternalgy
 BUBBLE_BASE_URL=https://eternalgy.bubbleapps.io
-DATABASE_URL=postgresql://... (provided by Railway)
+DATABASE_URL=postgresql://... (Railway managed)
 NODE_ENV=production
 PORT=3000
 ```
 
-## API Endpoints
+## 📖 API Endpoints
 
-### Test Endpoints
+- `GET /` - Service information
 - `GET /health` - Health check
-- `GET /api/test/bubble` - Test Bubble API connection
-- `GET /api/test/discover-tables` - Discover all Bubble data types
-- `GET /api/test/sample-data?table={name}&limit={num}` - Get sample data
+- `POST /api/sync` - Trigger sync process (coming soon)
+- `GET /api/discovery` - View discovered data types (coming soon)
 
-### Deployment
+## 🚨 Development Rules
 
-1. Push to GitHub repository
-2. Railway automatically builds and deploys
-3. Test endpoints via Railway URL
+Based on lessons from 25+ failed attempts:
 
-## Development Rules
+- ❌ NO localhost testing
+- ❌ NO custom field mapping services  
+- ❌ NO middleware between Bubble and Prisma
+- ✅ Railway-only development and testing
+- ✅ Ultra-simple architecture
+- ✅ Fail fast approach
 
-- ✅ Railway-first deployment
-- ✅ No local testing
-- ✅ Use existing BubbleService
-- ✅ Simple field mapping via Prisma @map()
-- ❌ No custom field mapping services
-- ❌ No localhost development
+## 📚 Documentation
+
+See `/memory/` folder for:
+- Project specifications
+- Critical instructions
+- Failure analysis from previous attempts
+- Field naming strategies

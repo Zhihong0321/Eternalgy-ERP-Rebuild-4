@@ -1,0 +1,41 @@
+# SECURITY MEMORY
+## Security Constraints
+- Single user system - no authentication required
+- Railway-only deployment - no local security concerns  
+- Environment variables for sensitive data only
+
+## API Security
+- Bubble API credentials via Railway environment variables
+- PostgreSQL credentials managed by Railway
+- No hardcoded secrets in codebase
+- No local credential storage
+
+## Data Protection
+- Bubble data is source of truth - read-only access
+- No sensitive data transformation or storage beyond mirroring
+- PostgreSQL access limited to Railway environment
+- No local database copies permitted
+
+## Deployment Security  
+- GitHub repository can be public (no secrets in code)
+- Railway environment variables for all credentials
+- Automatic deployment from GitHub - no manual credential handling
+- No localhost endpoints or development servers
+
+## Audit Requirements
+- Log all API access attempts
+- Track sync operations and data changes
+- Monitor for unusual patterns in Bubble API usage
+- Railway provides deployment and access logs
+
+## Risk Mitigation
+- No local development = no local security risks
+- Railway-managed infrastructure reduces attack surface  
+- Read-only sync prevents data corruption
+- Simple architecture minimizes security complexity
+
+## Compliance Notes
+- Data mirroring only - no data transformation
+- Bubble remains authoritative source
+- Railway infrastructure handles most security concerns
+- Minimal custom security implementation needed

@@ -1,0 +1,29 @@
+# PERSISTENT BUGS MEMORY
+## Currently Known Issues
+- No persistent bugs documented yet - this is a fresh start
+
+## Watch Out For (Common Issues)
+- Field names with special characters (%, spaces, ?) breaking Prisma
+- Bubble API rate limiting during large syncs
+- PostgreSQL connection timeouts on Railway
+- Schema generation failing on complex data types
+- Prisma upsert conflicts on duplicate bubbleId values
+
+## Monitoring Points
+- Check field mapping for: "Invoice Date", "1st Payment %", "Commission Paid?"
+- Monitor sync status during long-running operations
+- Watch for Railway deployment failures on schema changes
+- Track memory usage during large table syncs
+
+## Error Patterns to Log
+- Prisma schema generation failures
+- Bubble API authentication errors
+- Database connection drops during sync
+- Field type conversion errors
+- Missing @map() directives causing DB errors
+
+## Resolution Strategy
+- Always log full error context (table, record ID, field name)
+- Stop sync immediately on first error - don't continue
+- Use Railway logs for debugging, not local console
+- Test schema changes with small data sets first

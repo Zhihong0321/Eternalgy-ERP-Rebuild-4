@@ -1,0 +1,47 @@
+# CONFIGURATION MEMORY
+## Deployment Environment
+- **ONLY Environment**: Railway.app
+- **NO local development** permitted per rules
+- **NO localhost URLs** or local connection strings
+- **NO SQLite or local databases**
+
+## Required Services
+- Railway PostgreSQL add-on (live production DB)
+- GitHub repository: eternalgy-erp
+- Railway project linked to GitHub repo
+- Automatic deployment from GitHub pushes
+
+## Environment Variables (Railway Dashboard) - CRITICAL UPDATE
+# BUBBLE API KEY DISCOVERED
+BUBBLE_API_KEY=b879d2b5ee6e6b39bcf99409c59c9e02
+BUBBLE_APP_NAME=eternalgy
+BUBBLE_BASE_URL=https://eternalgy.bubbleapps.io
+
+# PostgreSQL connection string (Railway-provided)
+DATABASE_URL=(Railway auto-managed)
+
+# Production environment configuration
+NODE_ENV=production
+PORT=3000
+
+## API Endpoints (Live Testing)
+- All testing via deployed Railway endpoints
+- No local API testing
+- Use Railway URLs for all validation
+
+## Build Configuration
+- Build Tool: pnpm
+- Runtime: Node.js
+- Framework: Express + Vite
+- Database: PostgreSQL via Railway addon
+- No local build processes
+
+## Folder Structure (Railway Deployment)
+```
+eternalgy-erp/
+├── src/api/ (Express endpoints)
+├── src/services/ (Bubble integration)
+├── prisma/ (Schema + migrations)
+├── samples/ (API response storage)
+└── package.json (pnpm configuration)
+```

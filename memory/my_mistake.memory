@@ -1,0 +1,34 @@
+# KNOWN MISTAKES MEMORY
+## Past Failures (DO NOT REPEAT)
+- ❌ Creating FieldMappingService - caused complexity, not needed
+- ❌ Modifying BubbleService - reuse existing, don't modify
+- ❌ Using JSONB to store raw data - use structured schema instead
+- ❌ Adding retry logic - let sync resume manually on failure
+- ❌ Processing tables in parallel - do one table at a time
+- ❌ Testing locally - all testing must be on Railway
+- ❌ Inventing new naming strategies - use toCamelCase() only
+- ❌ Assuming field types - sample real data first
+
+## Architecture Mistakes
+- ❌ Over-engineering the solution - keep it simple
+- ❌ Building frameworks instead of bridges
+- ❌ Adding unnecessary middleware layers
+- ❌ Complex field collision detection systems
+
+## Development Mistakes  
+- ❌ Local development setup attempts
+- ❌ Creating localhost endpoints
+- ❌ Using local databases for testing
+- ❌ Fake/mocked data instead of real API responses
+
+## Sync Logic Mistakes
+- ❌ Hardcoding table names instead of dynamic discovery
+- ❌ Complex field mapping transformations
+- ❌ Parallel processing causing race conditions
+- ❌ Not using upsert() for conflict resolution
+- ❌ Missing @map() directives for special characters
+
+## Time Management
+- Previous attempts took too long due to over-engineering
+- Target: less than 6 hours total implementation
+- Focus: working bridge, not perfect framework
