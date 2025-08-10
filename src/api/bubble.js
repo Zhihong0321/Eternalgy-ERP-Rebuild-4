@@ -1,7 +1,9 @@
 import express from 'express';
 import BubbleService from '../services/bubbleService.js';
+import SchemaGenerationService from '../services/schemaGenerationService.js';
 
 const router = express.Router();
+const schemaService = new SchemaGenerationService();
 
 // Initialize Bubble service
 let bubbleService;
@@ -222,6 +224,27 @@ router.get('/', (req, res) => {
           '/api/bubble/fetch/user?limit=10&cursor=0',
           '/api/bubble/fetch/product?limit=999999'
         ]
+      },
+      generateSchema: {
+        method: 'POST',
+        path: '/api/bubble/generate-schema',
+        description: 'Generate and apply Prisma schema from discovered data types',
+        critical: 'This creates database tables - use carefully'
+      },
+      previewSchema: {
+        method: 'POST',
+        path: '/api/bubble/preview-schema',
+        description: 'Generate schema preview without applying to database',
+        safe: 'Preview only - no database changes'
+      },
+      analyzeType: {
+        method: 'GET',
+        path: '/api/bubble/analyze/{dataType}?samples=5',
+        description: 'Analyze specific data type structure in detail',
+        parameters: {
+          dataType: 'Name of the data type to analyze',
+          samples: 'Number of sample records to analyze (1-20, default: 5)'
+        }
       }
     },
     environment: {
@@ -230,6 +253,140 @@ router.get('/', (req, res) => {
       serviceStatus: bubbleService ? 'Initialized ✅' : 'Failed ❌'
     }
   });
+});
+
+// SCHEMA GENERATION ENDPOINTS
+// These endpoints handle the critical schema generation process
+
+// Generate Prisma schema from discovered data types
+router.post('/generate-schema', async (req, res) => {
+  try {
+    console.log('🏗️  Starting schema generation process...');
+    const startTime = Date.now();
+
+    const result = await schemaService.generateAndApplySchema();
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+
+    console.log(`🎉 Schema generation completed in ${(duration / 1000).toFixed(2)}s`);
+
+    res.json({
+      success: true,
+      message: 'Prisma schema generated and applied successfully',
+      duration: `${(duration / 1000).toFixed(2)}s`,
+      summary: result.summary,
+      generation: {
+        totalTypes: result.generation.results.totalTypes,
+        processedTypes: result.generation.results.processedTypes,
+        typesWithData: result.generation.results.typesWithData,
+        typesEmpty: result.generation.results.typesEmpty,
+        errors: result.generation.results.errors
+      },
+      application: {
+        success: result.application.success,
+        timestamp: result.application.timestamp
+      },
+      timestamp: new Date().toISOString(),
+      nextSteps: {
+        viewSchema: 'Check prisma/schema.prisma file',
+        testDatabase: 'Database tables created and ready',
+        startSync: 'Ready for data synchronization'
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Schema generation failed:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: 'Schema generation failed',
+      timestamp: new Date().toISOString(),
+      troubleshooting: [
+        'Check Bubble API connection',
+        'Verify database connection',
+        'Check Prisma configuration',
+        'Review error logs above'
+      ]
+    });
+  }
+});
+
+// Generate schema preview without applying to database
+router.post('/preview-schema', async (req, res) => {
+  try {
+    console.log('👀 Generating schema preview...');
+    const startTime = Date.now();
+
+    const result = await schemaService.generateCompleteSchema();
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+
+    res.json({
+      success: true,
+      message: 'Schema preview generated successfully',
+      duration: `${(duration / 1000).toFixed(2)}s`,
+      results: result.results,
+      schema: result.schema,
+      models: result.results.models,
+      timestamp: result.timestamp,
+      actions: {
+        applySchema: 'POST /api/bubble/generate-schema',
+        downloadSchema: 'Copy schema content from response'
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Schema preview failed:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: 'Schema preview failed',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Analyze specific data type structure in detail
+router.get('/analyze/:dataType', async (req, res) => {
+  try {
+    const { dataType } = req.params;
+    const { samples = 5 } = req.query;
+    const sampleSize = Math.max(1, Math.min(parseInt(samples) || 5, 20));
+
+    console.log(`🔍 Analyzing ${dataType} structure with ${sampleSize} samples...`);
+    
+    const analysis = await schemaService.analyzeDataTypeStructure(dataType, sampleSize);
+    const modelPreview = schemaService.generateModelDefinition(dataType, analysis);
+
+    res.json({
+      success: true,
+      message: `Structure analysis complete for ${dataType}`,
+      dataType,
+      analysis: {
+        hasData: analysis.hasData,
+        sampleCount: analysis.sampleCount,
+        fieldCount: Object.keys(analysis.fields).length,
+        totalAvailable: analysis.totalAvailable || 0
+      },
+      fields: analysis.fields,
+      examples: analysis.examples,
+      modelPreview: {
+        modelName: modelPreview.modelName,
+        tableName: modelPreview.tableName,
+        definition: modelPreview.definition
+      },
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error(`❌ Analysis failed for ${req.params.dataType}:`, error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: `Structure analysis failed for ${req.params.dataType}`,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 export default router;
