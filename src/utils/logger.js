@@ -121,19 +121,32 @@ class Logger {
       // Create system_logs table if it doesn't exist
       await this.ensureSystemLogsTable();
 
-      // Insert batch to database
-      await prisma.$executeRaw`
-        INSERT INTO system_logs (timestamp, run_id, level, context, message, metadata)
-        SELECT timestamp::timestamptz, run_id, level, context, message, metadata::jsonb
-        FROM json_to_recordset(${JSON.stringify(batch)}) AS t(
-          timestamp text,
-          run_id text,
-          level text,
-          context text,
-          message text,
-          metadata json
-        )
-      `;
+      // Insert batch using PostgreSQL-compatible VALUES syntax
+      if (batch.length === 1) {
+        // Single insert for performance
+        const log = batch[0];
+        await prisma.$executeRaw`
+          INSERT INTO system_logs (timestamp, run_id, level, context, message, metadata)
+          VALUES (
+            ${new Date(log.timestamp)},
+            ${log.runId},
+            ${log.level},
+            ${log.context},
+            ${log.message},
+            ${JSON.stringify(log.metadata)}::jsonb
+          )
+        `;
+      } else {
+        // Batch insert using multiple VALUES
+        const values = batch.map(log => 
+          `('${new Date(log.timestamp).toISOString()}', '${log.runId}', '${log.level}', '${log.context}', '${log.message.replace(/'/g, "''")}', '${JSON.stringify(log.metadata).replace(/'/g, "''")}'::jsonb)`
+        ).join(',');
+        
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO system_logs (timestamp, run_id, level, context, message, metadata)
+          VALUES ${values}
+        `);
+      }
 
       console.log(`📝 UDLS: Flushed ${batch.length} logs to database`);
     } catch (error) {
