@@ -429,7 +429,7 @@ class DataSyncService {
   transformRecord(record, tableName) {
     const transformed = {
       bubble_id: record._id || record.id,
-      synced_at: new Date().toISOString()
+      synced_at: new Date() // Pass Date object instead of string
     };
 
     // Basic field transformation (serialize complex types as JSON)
