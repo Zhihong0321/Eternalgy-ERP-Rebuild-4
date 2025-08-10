@@ -7,6 +7,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Trust proxy for Railway/Heroku deployment (fixes rate limiting error)
+// CRITICAL: This fixes ERR_ERL_UNEXPECTED_X_FORWARDED_FOR error
+// DEPLOYMENT VERSION: v1.1.0-fixed-20250810
 app.set('trust proxy', 1);
 
 // Middleware
@@ -38,7 +40,7 @@ app.get('/', (req, res) => {
   res.json({
     name: 'Eternalgy ERP Rebuild 4',
     description: 'Bubble.io to PostgreSQL sync system',
-    version: '1.1.0',
+    version: '1.1.0-fixed',
     endpoints: {
       health: '/health',
       bubble: {
