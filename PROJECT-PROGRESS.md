@@ -131,10 +131,12 @@
 - [x] Environment variables configured
 - [x] Basic project structure complete
 
-### Phase 2 (Services) ⏳ PENDING
-- [ ] BubbleService implemented and tested
-- [ ] Dynamic data type discovery working
-- [ ] Prisma schema generation from discovered types
+### Phase 2 (Services) 🔄 IN PROGRESS
+- [x] BubbleService implemented and tested
+- [x] Dynamic data type discovery working (200+ patterns scanned)
+- [x] Prisma schema generation from discovered types
+- [x] API endpoints created: test-connection, discover-types, fetch, generate-schema
+- [x] SchemaGenerationService with exact toCamelCase and @map() directives
 - [ ] Database connection and basic sync tested
 
 ### Phase 3 (Full Sync) ⏳ PENDING  
