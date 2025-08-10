@@ -36,21 +36,49 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: {
       health: '/health',
-      bubbleAPI: '/api/bubble',
-      testConnection: '/api/bubble/test-connection',
-      discoverTypes: '/api/bubble/discover-types',
-      fetchData: '/api/bubble/fetch/{dataType}?limit=5'
+      bubble: {
+        testConnection: '/api/bubble/test-connection',
+        discoverTypes: '/api/bubble/discover-types',
+        fetchData: '/api/bubble/fetch/{dataType}?limit=5'
+      },
+      sync: {
+        singleTable: 'POST /api/sync/table/{tableName}?limit=5',
+        batchSync: 'POST /api/sync/batch?globalLimit=5',
+        status: '/api/sync/status/{runId}',
+        history: '/api/sync/history?limit=10',
+        tables: '/api/sync/tables',
+        stats: '/api/sync/stats'
+      },
+      logs: {
+        recent: '/api/logs/recent?limit=50',
+        errors: '/api/logs/errors?limit=25',
+        byRun: '/api/logs/run/{runId}',
+        byContext: '/api/logs/context/{context}?limit=100',
+        stats: '/api/logs/stats',
+        health: '/api/logs/health'
+      }
     },
     status: {
-      phase: 'Step 1: Bubble Data Fetching Foundation',
-      features: ['Dynamic discovery (50+ types)', 'Selective data fetching', 'API key verification']
+      phase: 'Phase 3: Sync Implementation Complete',
+      features: [
+        'UDLS-compliant logging (mandatory)',
+        'Single table sync with limiter',
+        'Batch sync with global limit (Option A)',
+        'HTTP log access endpoints',
+        'Railway deployment ready'
+      ]
     }
   });
 });
 
-// Bubble Data API routes
+// API routes
 import bubbleRoutes from './api/bubble.js';
+import syncRoutes from './api/sync.js';
+import logsRoutes from './api/logs.js';
+
 app.use('/api/bubble', bubbleRoutes);
+app.use('/api/sync', syncRoutes);
+app.use('/api/logs', logsRoutes);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
