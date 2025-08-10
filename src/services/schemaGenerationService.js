@@ -16,7 +16,7 @@ class SchemaGenerationService {
   toCamelCase(str) {
     if (!str || typeof str !== 'string') return 'unknownField';
     
-    return str
+    let result = str
       .replace(/[^a-zA-Z0-9\s]/g, '')  // Remove %, _, etc.
       .replace(/\s+/g, ' ')            // Normalize spaces
       .split(' ')
@@ -25,6 +25,18 @@ class SchemaGenerationService {
         return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
       })
       .join('');
+
+    // Fix: Field names cannot start with numbers in Prisma
+    if (/^\d/.test(result)) {
+      result = 'field' + result.charAt(0).toUpperCase() + result.slice(1);
+    }
+
+    // Fallback for empty or invalid results
+    if (!result || result === '') {
+      result = 'unknownField';
+    }
+
+    return result;
   }
 
   // Convert data type name to PascalCase for Prisma model names
@@ -167,12 +179,24 @@ class SchemaGenerationService {
         return a.localeCompare(b);
       });
 
+      // Track field names to prevent duplicates
+      const usedFieldNames = new Set();
+
       sortedFields.forEach(originalFieldName => {
         // Skip _id as it's handled by bubbleId
         if (originalFieldName === '_id') return;
 
         const prismaFieldType = fieldAnalysis.fields[originalFieldName];
-        const prismaFieldName = this.toCamelCase(originalFieldName);
+        let prismaFieldName = this.toCamelCase(originalFieldName);
+        
+        // Handle field name collisions
+        let counter = 1;
+        const baseName = prismaFieldName;
+        while (usedFieldNames.has(prismaFieldName)) {
+          prismaFieldName = `${baseName}${counter}`;
+          counter++;
+        }
+        usedFieldNames.add(prismaFieldName);
         
         // Add field with @map directive to preserve original Bubble field name
         modelDef += `  ${prismaFieldName.padEnd(20)} ${prismaFieldType.padEnd(10)} @map("${originalFieldName}")\n`;
