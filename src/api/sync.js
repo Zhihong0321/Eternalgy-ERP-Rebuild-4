@@ -208,7 +208,7 @@ router.get('/status/:runId', async (req, res) => {
     }
 
     // Analyze logs to determine status
-    const status = this.analyzeSyncStatus(runLogs);
+    const status = analyzeSyncStatus(runLogs);
     const duration = Date.now() - startTime;
 
     logger.info('API response: Sync status retrieved', requestRunId, {
@@ -278,7 +278,7 @@ router.get('/history', async (req, res) => {
       .slice(-limit);
 
     // Group logs by runId to create sync history
-    const syncHistory = this.groupLogsByRun(syncLogs);
+    const syncHistory = groupLogsByRun(syncLogs);
 
     const duration = Date.now() - startTime;
 

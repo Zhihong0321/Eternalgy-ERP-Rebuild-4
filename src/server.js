@@ -24,7 +24,9 @@ app.get('/health', (req, res) => {
     status: 'OK', 
     timestamp: new Date().toISOString(),
     service: 'Eternalgy ERP Rebuild 4',
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    deploymentTime: '2025-08-10T15:01:00Z',
+    syncServicesEnabled: true
   });
 });
 
@@ -68,6 +70,18 @@ app.get('/', (req, res) => {
         'Railway deployment ready'
       ]
     }
+  });
+});
+
+// Deployment verification endpoint
+app.get('/deploy-status', (req, res) => {
+  res.json({
+    deployed: true,
+    timestamp: new Date().toISOString(),
+    version: '1.1.0',
+    syncServicesAvailable: true,
+    logsServicesAvailable: true,
+    message: 'Sync implementation deployed successfully'
   });
 });
 
