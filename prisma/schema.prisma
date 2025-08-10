@@ -12,3 +12,12 @@ datasource db {
 
 // Dynamic models will be generated here by the sync service
 // Following the pattern from PSD documentation
+
+// Temporary model for deployment - will be replaced by dynamic generation
+model BubbleSync {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("bubble_sync")
+}
