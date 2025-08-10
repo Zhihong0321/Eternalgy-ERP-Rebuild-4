@@ -332,26 +332,56 @@ class DataSyncService {
     });
 
     try {
-      // For now, we'll use raw SQL to create basic tables
-      // This is a simplified approach - in production, you'd generate Prisma schema
-      
+      const safeTableName = tableName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
       const sampleRecord = sampleRecords[0] || {};
       const fields = Object.keys(sampleRecord);
       
-      // Create basic table structure if it doesn't exist
+      // Check if table exists and if it has the correct schema
+      try {
+        // Try to query synced_at column to see if it exists
+        await this.prisma.$queryRawUnsafe(
+          `SELECT synced_at FROM "${safeTableName}" LIMIT 1`
+        );
+        
+        this.logger.info('Table exists with correct schema', runId, {
+          operation: 'table_schema_valid',
+          table: tableName
+        });
+        return;
+        
+      } catch (schemaError) {
+        // Table exists but has wrong schema, recreate it
+        if (schemaError.message.includes('column "synced_at" of relation')) {
+          this.logger.warn('Table exists with wrong schema, recreating', runId, {
+            operation: 'table_schema_mismatch',
+            table: tableName,
+            error: schemaError.message
+          });
+          
+          // Drop existing table and recreate with correct schema
+          await this.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${safeTableName}"`);
+          
+          this.logger.info('Dropped existing table', runId, {
+            operation: 'table_dropped',
+            table: tableName
+          });
+        }
+      }
+      
+      // Create table with correct schema
       const tableSql = this.generateTableSQL(tableName, fields);
       
-      this.logger.debug('Creating table if not exists', runId, {
+      this.logger.debug('Creating table with correct schema', runId, {
         operation: 'table_create_sql',
         table: tableName,
         fields: fields.length,
         sql: tableSql.substring(0, 200) + '...'
       });
 
-      // Execute table creation (idempotent)
+      // Execute table creation
       await this.prisma.$executeRawUnsafe(tableSql);
 
-      this.logger.info('Table ensured successfully', runId, {
+      this.logger.info('Table created successfully', runId, {
         operation: 'table_ensure_success',
         table: tableName,
         fields: fields.length
@@ -377,7 +407,6 @@ class DataSyncService {
     let sql = `CREATE TABLE IF NOT EXISTS "${safeTableName}" (\n`;
     sql += `  id SERIAL PRIMARY KEY,\n`;
     sql += `  bubble_id TEXT UNIQUE,\n`;
-    sql += `  synced_at TIMESTAMPTZ DEFAULT NOW(),\n`;
     
     // Add basic fields (simplified approach)
     fields.forEach(field => {
@@ -387,8 +416,9 @@ class DataSyncService {
       }
     });
     
-    sql = sql.slice(0, -2); // Remove last comma
-    sql += `\n)`;
+    // Add synced_at column last
+    sql += `  synced_at TIMESTAMPTZ DEFAULT NOW()\n`;
+    sql += `)`;
     
     return sql;
   }
