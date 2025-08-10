@@ -261,6 +261,22 @@ router.get('/', (req, res) => {
 // SCHEMA GENERATION ENDPOINTS
 // These endpoints handle the critical schema generation process
 
+// Simple test endpoint to verify schema service deployment
+router.get('/schema-test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Schema generation service endpoints are deployed',
+    timestamp: new Date().toISOString(),
+    availableEndpoints: {
+      test: 'GET /api/bubble/schema-test',
+      analyze: 'GET /api/bubble/analyze/{dataType}',
+      preview: 'POST /api/bubble/preview-schema',
+      generate: 'POST /api/bubble/generate-schema'
+    },
+    schemaServiceLoaded: schemaService ? true : false
+  });
+});
+
 // Generate Prisma schema from discovered data types
 router.post('/generate-schema', async (req, res) => {
   try {
