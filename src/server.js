@@ -36,14 +36,21 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: {
       health: '/health',
-      sync: '/api/sync (coming soon)',
-      discovery: '/api/discovery (coming soon)'
+      bubbleAPI: '/api/bubble',
+      testConnection: '/api/bubble/test-connection',
+      discoverTypes: '/api/bubble/discover-types',
+      fetchData: '/api/bubble/fetch/{dataType}?limit=5'
+    },
+    status: {
+      phase: 'Step 1: Bubble Data Fetching Foundation',
+      features: ['Dynamic discovery (50+ types)', 'Selective data fetching', 'API key verification']
     }
   });
 });
 
-// API routes will be added here
-// app.use('/api', apiRoutes);
+// Bubble Data API routes
+import bubbleRoutes from './api/bubble.js';
+app.use('/api/bubble', bubbleRoutes);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
