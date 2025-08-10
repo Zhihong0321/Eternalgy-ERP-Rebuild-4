@@ -6,8 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "node src/server.js",
-    "start": "node src/server.js",
-    "build": "npm install && npx prisma generate && npx prisma db push --accept-data-loss",
+    "start": "npx prisma db push --accept-data-loss && node src/server.js",
+    "build": "npm install && npx prisma generate",
+    "migrate": "npx prisma db push --accept-data-loss",
     "prisma:push": "npx prisma db push",
     "prisma:generate": "npx prisma generate",
     "discovery": "node scripts/bubble-api-discovery.js",

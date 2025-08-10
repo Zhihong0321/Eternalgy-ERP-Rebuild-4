@@ -1,9 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
 // Load environment variables
 dotenv.config();
+
+const execAsync = promisify(exec);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -89,9 +93,28 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Database migration function
+async function migrateDatabase() {
+  try {
+    console.log('🔄 Running database migration...');
+    const { stdout, stderr } = await execAsync('npx prisma db push --accept-data-loss');
+    if (stdout) console.log('Migration output:', stdout);
+    if (stderr) console.warn('Migration warnings:', stderr);
+    console.log('✅ Database migration completed');
+  } catch (error) {
+    console.error('❌ Database migration failed:', error.message);
+    console.warn('⚠️  Server will continue without database (some features may not work)');
+  }
+}
+
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Eternalgy ERP Server running on port ${PORT}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-});
+async function startServer() {
+  app.listen(PORT, () => {
+    console.log(`🚀 Eternalgy ERP Server running on port ${PORT}`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  });
+}
+
+// Start the server
+startServer().catch(console.error);
