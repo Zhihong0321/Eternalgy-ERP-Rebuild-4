@@ -33,7 +33,7 @@ app.get('/', (req, res) => {
   res.json({
     name: 'Eternalgy ERP Rebuild 4',
     description: 'Bubble.io to PostgreSQL sync system',
-    version: '1.0.0',
+    version: '1.1.0',
     endpoints: {
       health: '/health',
       bubble: {
