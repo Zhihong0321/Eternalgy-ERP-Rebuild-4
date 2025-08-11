@@ -657,37 +657,31 @@ class DataSyncService {
   }
 
   /**
-   * Convert camelCase field names back to original Bubble field names with @map() logic
-   * CRITICAL: Maintains proper data types (especially Date objects for timestamps)
+   * Convert field names to database column names (use camelCase as column names)
+   * SIMPLE: The schema generation already created columns with camelCase names
    */
   async convertToDbFieldNames(transformedRecord, tableName, runId) {
     const dbRecord = {
-      bubble_id: transformedRecord.bubbleId // Always map bubbleId -> bubble_id
+      bubble_id: transformedRecord.bubbleId // Map bubbleId -> bubble_id (standard)
     };
 
-    // For other fields, we need to reverse the camelCase conversion
-    // Since we can't easily reverse the transformation, we'll use the original field names
-    // from the Bubble data and apply the same logic as schema generation
-    
+    // Use camelCase field names directly as column names
+    // The Prisma schema generation should have created columns with these names
     Object.keys(transformedRecord).forEach(camelCaseField => {
       if (camelCaseField === 'bubbleId') {
         return; // Already handled
       }
 
-      // Convert camelCase back to original field name (approximation)
-      // This is a simplified approach - in production you'd want a field mapping service
-      const originalFieldName = this.camelCaseToOriginal(camelCaseField);
       const value = transformedRecord[camelCaseField];
       
-      // Use the original field name as the database column (this matches @map() behavior)
-      dbRecord[originalFieldName] = value;
+      // Use camelCase field name directly as column name
+      dbRecord[camelCaseField] = value;
     });
 
-    this.logger.debug('Converted field names for database', runId, {
-      operation: 'field_name_conversion_complete',
+    this.logger.debug('Using camelCase field names as column names', runId, {
+      operation: 'field_name_direct_mapping',
       table: tableName,
-      camelCaseFields: Object.keys(transformedRecord).length,
-      dbFields: Object.keys(dbRecord).length
+      fields: Object.keys(dbRecord)
     });
 
     return dbRecord;
