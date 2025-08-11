@@ -657,16 +657,15 @@ class DataSyncService {
   }
 
   /**
-   * Convert transformed record for database using camelCase column names
-   * REALITY: The Prisma schema generation actually created camelCase columns, not @map()
+   * Convert transformed record back to original Bubble field names for database
+   * FINAL FIX: Use the fixed translator we just created
    */
   async convertToDbFieldNames(transformedRecord, tableName, runId) {
     const dbRecord = {
       bubble_id: transformedRecord.bubbleId // Standard mapping
     };
 
-    // Use camelCase field names directly as database columns
-    // The actual schema generation created columns with camelCase names
+    // Convert camelCase back to original Bubble field names using our fixed translator
     Object.keys(transformedRecord).forEach(camelCaseField => {
       if (camelCaseField === 'bubbleId') {
         return; // Already handled
@@ -674,14 +673,18 @@ class DataSyncService {
 
       const value = transformedRecord[camelCaseField];
       
-      // Use camelCase field name directly as database column
-      dbRecord[camelCaseField] = value;
+      // Use our fixed translator to get original Bubble field name
+      const originalFieldName = this.camelCaseToOriginal(camelCaseField);
+      
+      // Use original Bubble field name as database column (matches Prisma @map)
+      dbRecord[originalFieldName] = value;
     });
 
-    this.logger.debug('Using camelCase field names as database columns', runId, {
-      operation: 'field_name_direct_mapping',
+    this.logger.debug('Using fixed translator for database field names', runId, {
+      operation: 'fixed_translator_mapping',
       table: tableName,
-      camelCaseFields: Object.keys(transformedRecord).filter(f => f !== 'bubbleId').slice(0, 5)
+      camelCaseFields: Object.keys(transformedRecord).filter(f => f !== 'bubbleId').slice(0, 3),
+      dbFields: Object.keys(dbRecord).filter(f => f !== 'bubble_id').slice(0, 3)
     });
 
     return dbRecord;
