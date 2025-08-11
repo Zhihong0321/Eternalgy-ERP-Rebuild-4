@@ -408,8 +408,22 @@ class SchemaCreationService {
         if (value instanceof Date) {
           fieldInfo.sqlType = 'TIMESTAMPTZ';
         } else if (Array.isArray(value)) {
-          fieldInfo.sqlType = 'JSONB';
-          fieldInfo.comment = 'Array data stored as JSONB';
+          // Check if array contains Bubble IDs (relationship array)
+          const isRelationshipArray = this.isRelationshipArray(value, fieldName);
+          if (isRelationshipArray) {
+            fieldInfo.sqlType = 'TEXT[]';
+            fieldInfo.isRelationship = true;
+            fieldInfo.comment = `Array of Bubble IDs - relationships to ${this.guessReferencedTable(fieldName)}`;
+            fieldInfo.relationship = {
+              field: fieldName,
+              referencedTable: this.guessReferencedTable(fieldName),
+              referencedField: 'bubble_id',
+              isArray: true
+            };
+          } else {
+            fieldInfo.sqlType = 'JSONB';
+            fieldInfo.comment = 'Array data stored as JSONB';
+          }
         } else {
           fieldInfo.sqlType = 'JSONB';
           fieldInfo.comment = 'Object data stored as JSONB';
@@ -428,15 +442,101 @@ class SchemaCreationService {
   }
 
   /**
+   * Check if array contains Bubble IDs (relationship array)
+   * ROBUST detection method that catches all foreign key arrays
+   */
+  isRelationshipArray(array, fieldName) {
+    if (!Array.isArray(array) || array.length === 0) {
+      return false;
+    }
+
+    // Method 1: Check if ALL elements look like Bubble IDs
+    // This is the most reliable method - if all elements are Bubble IDs, it's definitely a relationship
+    const allElementsAreBubbleIds = array.every(element => {
+      if (typeof element !== 'string') return false;
+      
+      // Bubble ID pattern: 13+ digits + 'x' + 15+ digits
+      // Examples from real data:
+      // "1692255756673x335736081690132500" (13x18)
+      // "1696227082042x491448065157496800" (13x18) 
+      // "1741614860801x190167310062321660" (13x18)
+      const bubbleIdPattern = /^\d{10,}x\d{15,}$/;
+      return bubbleIdPattern.test(element);
+    });
+
+    if (allElementsAreBubbleIds) {
+      this.logger?.debug?.('Detected relationship array - all elements are Bubble IDs', null, {
+        field: fieldName,
+        sampleIds: array.slice(0, 2),
+        count: array.length
+      });
+      return true;
+    }
+
+    // Method 2: Check if field name suggests relationships (backup method)
+    const relationshipKeywords = [
+      'linked', 'related', 'connected', 'associated', 'refs', 'references',
+      'products', 'items', 'users', 'agents', 'customers', 'clients',
+      'invoices', 'payments', 'orders', 'categories', 'tags', 'groups',
+      'organizations', 'companies', 'contacts', 'leads', 'opportunities',
+      'projects', 'tasks', 'assets', 'resources', 'dependencies'
+    ];
+    
+    const fieldLower = fieldName.toLowerCase();
+    const hasRelationshipName = relationshipKeywords.some(keyword => 
+      fieldLower.includes(keyword)
+    );
+
+    // If name suggests relationship AND elements look like IDs, it's likely a relationship
+    if (hasRelationshipName && array.length > 0) {
+      const sampleElement = array[0];
+      if (typeof sampleElement === 'string') {
+        // More flexible pattern for potential Bubble IDs
+        const possibleBubbleIdPattern = /^\d{10,}x\d{10,}$/;
+        const couldBeBubbleId = possibleBubbleIdPattern.test(sampleElement);
+        
+        if (couldBeBubbleId) {
+          this.logger?.debug?.('Detected relationship array - field name + ID pattern', null, {
+            field: fieldName,
+            sampleIds: array.slice(0, 2),
+            count: array.length
+          });
+          return true;
+        }
+      }
+    }
+
+    // Method 3: Final check for arrays that might be relationships
+    // If all elements are strings and longer than 20 chars, might be IDs
+    const allStringsLongEnough = array.every(element => 
+      typeof element === 'string' && element.length > 20
+    );
+
+    if (allStringsLongEnough && array.length > 0) {
+      this.logger?.debug?.('Potential relationship array - long string IDs', null, {
+        field: fieldName,
+        sampleIds: array.slice(0, 2),
+        count: array.length
+      });
+      // Return true if this looks like IDs, but log for verification
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Guess referenced table from relationship field name
    */
   guessReferencedTable(fieldName) {
     // Remove common suffixes to guess table name
-    const baseName = fieldName
+    let baseName = fieldName
       .replace(/_id$/i, '')
       .replace(/Id$/i, '')
       .replace(/_ref$/i, '')
-      .replace(/Ref$/i, '');
+      .replace(/Ref$/i, '')
+      .replace(/^linked_?/i, '') // Remove "Linked" prefix
+      .replace(/s$/, ''); // Remove plural 's'
     
     return baseName.toLowerCase();
   }
