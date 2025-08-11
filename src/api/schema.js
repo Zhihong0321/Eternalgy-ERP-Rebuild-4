@@ -12,9 +12,17 @@ const logger = loggers.api;
  */
 
 // POST /api/schema/create-all - Create all tables from discovered types
+// ⚠️ DEPRECATED: Use /api/bubble/generate-schema instead for Prisma @map() approach
 router.post('/create-all', async (req, res) => {
   const runId = logger.generateRunId();
   const startTime = Date.now();
+  
+  // DEPRECATION WARNING
+  logger.warn('DEPRECATED ENDPOINT USED: /api/schema/create-all', runId, {
+    operation: 'deprecated_endpoint_warning',
+    endpoint: '/api/schema/create-all',
+    recommendation: 'Use /api/bubble/generate-schema for Prisma @map() approach'
+  });
   
   // Parse options from query parameters
   const options = {
@@ -239,9 +247,17 @@ router.delete('/drop-all', async (req, res) => {
 });
 
 // POST /api/schema/recreate-all - Drop and recreate all tables
+// ⚠️ DEPRECATED: Use /api/bubble/generate-schema instead for Prisma @map() approach
 router.post('/recreate-all', async (req, res) => {
   const runId = logger.generateRunId();
   const startTime = Date.now();
+  
+  // DEPRECATION WARNING
+  logger.warn('DEPRECATED ENDPOINT USED: /api/schema/recreate-all', runId, {
+    operation: 'deprecated_endpoint_warning',
+    endpoint: '/api/schema/recreate-all',
+    recommendation: 'Use /api/bubble/generate-schema for Prisma @map() approach'
+  });
   
   logger.info('API request: Recreate all tables', runId, {
     operation: 'api_request',

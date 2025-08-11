@@ -7,8 +7,11 @@
 
 ## Required Services
 - Railway PostgreSQL add-on (live production DB)
-- GitHub repository: eternalgy-erp
-- Railway project linked to GitHub repo
+- GitHub repository: https://github.com/Zhihong0321/eternalgy-erp-rebuild-4
+- Railway project: eternalgy-erp-retry3 (production environment)
+- Railway service: eternalgy-erp-retry3
+- Production URL: https://eternalgy-erp-retry3-production.up.railway.app
+- Railway CLI: Authenticated as zhihong0321@gmail.com
 - Automatic deployment from GitHub pushes
 
 ## Environment Variables (Railway Dashboard) - CRITICAL UPDATE

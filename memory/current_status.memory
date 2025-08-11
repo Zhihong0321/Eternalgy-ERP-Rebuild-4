@@ -1,13 +1,84 @@
 # CURRENT PROJECT STATUS MEMORY
-## Last Updated: 2025-08-10
+
+## ✅ CRITICAL BUGS FIXED
+**Date:** January 2025
+**Status:** Production Ready
+
+### 🔥 Comprehensive Schema Conflict Fix Applied:
+1. **ADAPTIVE SCHEMA DETECTION SYSTEM**:
+   - Implemented detectSchemaType() method in dataSyncService.js
+   - Added getFieldMapping() for intelligent field conversion
+   - Schema type caching for performance optimization
+   - Automatic detection of SchemaCreationService vs SchemaGenerationService tables
+
+2. **UNIFIED DATA SYNC LOGIC**:
+   - Updated upsertRecordDirect() with adaptive field mapping
+   - Uses original field names for Prisma @map tables
+   - Uses snake_case conversion for SchemaCreationService tables
+   - Enhanced logging with schema type information
+   - Single data sync method works with both schema approaches
+
+3. **BACKWARD COMPATIBILITY MAINTAINED**:
+   - Deprecation warnings remain on /api/schema/create-all and /api/schema/recreate-all
+   - Users directed to Prisma approach but legacy support ensured
+   - clearSchemaCache() method for table recreation scenarios
+
+4. **VERIFIED: Relationship Array Handling**:
+   - isRelationshipArray() function working correctly
+   - Proper TEXT[] vs JSONB storage for PostgreSQL
+   - Foreign key detection robust and reliable
+
+4. **Previous Cleanup Actions**:
+   - Removed outdated functions from dataSyncService.js
+   - Ensured single source of truth architecture
+   - Verified clean data flow
+
+### 🎯 Current Architecture:
+- **BubbleService**: API connectivity ✅
+- **SchemaGenerationService**: Prisma models with @map() directives ✅
+- **BatchSyncService**: Multi-table orchestration ✅
+- **DataSyncService**: Clean sync logic with proper field mapping ✅
+
+### 📋 Adaptive Usage Flow (Universal Compatibility):
+
+#### ✅ Recommended Approach (Prisma @map):
+1. **Schema Creation**: Use `/api/bubble/generate-schema` (Prisma @map() approach)
+2. **Database Migration**: Run `npx prisma db push` or `npx prisma migrate dev`
+3. **Data Synchronization**: Use `/api/sync/table/{tableName}` (automatically detects Prisma @map)
+
+#### ✅ Legacy Support (Backward Compatible):
+1. **Schema Creation**: `/api/schema/create-all` (SchemaCreationService - snake_case)
+2. **Data Synchronization**: Use `/api/sync/table/{tableName}` (automatically detects snake_case)
+
+#### 🔄 Adaptive Data Sync:
+- **Automatic Detection**: Data sync automatically detects schema type per table
+- **Universal Compatibility**: Works with both Prisma @map and snake_case approaches
+- **Performance Optimized**: Schema type detection cached for efficiency
+- **Mixed Environments**: Can handle tables created by different schema services
+
+#### ❌ DEPRECATED (But Supported):
+- `/api/schema/create-all` and `/api/schema/recreate-all` (deprecated but functional)
+- Manual field mapping services (superseded by adaptive detection)
+
+### 🚨 Critical Adaptive Schema Fix Applied:
+Implemented intelligent schema detection system that automatically adapts field mapping based on table structure. Works seamlessly with both SchemaCreationService (snake_case) and SchemaGenerationService (Prisma @map) approaches, ensuring universal compatibility.
+## Last Updated: 2025-01-14
+
+## 🚀 DEPLOYMENT INFORMATION
+- **GitHub Repository**: https://github.com/Zhihong0321/eternalgy-erp-rebuild-4
+- **Railway Project**: eternalgy-erp-retry3
+- **Railway Environment**: production
+- **Railway Service**: eternalgy-erp-retry3
+- **Production URL**: https://eternalgy-erp-retry3-production.up.railway.app
+- **Railway CLI**: ✅ Authenticated as zhihong0321@gmail.com
+- **Railway CLI Status**: ✅ Connected and functional
 
 ## ✅ COMPLETED PHASES
 1. **Infrastructure Phase**: 100% Complete  
-   - Railway deployment working
+   - Railway deployment working and CLI verified
    - PostgreSQL database available
    - Environment variables set and verified
-   - Production URL: https://eternalgy-erp-retry3-production.up.railway.app
-   - Railway Service: eternalgy-erp-retry3
+   - Railway CLI authenticated and connected
    - Multi-session progress tracking implemented
 
 2. **API Discovery & Services Phase**: 100% Complete

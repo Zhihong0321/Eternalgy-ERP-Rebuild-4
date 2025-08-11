@@ -14,6 +14,7 @@ class DataSyncService {
     this.bubbleService = new BubbleService();
     this.logger = loggers.sync;
     this.prisma = prisma;
+    this.schemaTypeCache = new Map(); // Cache for schema type detection
   }
 
   /**
@@ -706,9 +707,93 @@ class DataSyncService {
    * DIRECT UPSERT: Work with exact Bubble field names as they exist in database
    * No field name conversion - use raw Bubble fields directly
    */
+  /**
+   * Detect schema type for a table (snake_case vs Prisma @map)
+   * @param {string} tableName - Table name to check
+   * @returns {Promise<string>} 'snake_case' or 'prisma_map'
+   */
+  async detectSchemaType(tableName, runId) {
+    const safeTableName = tableName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    
+    // Check cache first
+    if (this.schemaTypeCache.has(safeTableName)) {
+      return this.schemaTypeCache.get(safeTableName);
+    }
+
+    try {
+      // Query table schema to check column naming patterns
+      const columns = await this.prisma.$queryRawUnsafe(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = $1 
+        AND table_schema = 'public'
+        ORDER BY ordinal_position
+      `, safeTableName);
+
+      if (columns.length === 0) {
+        this.logger.warn('Table not found for schema detection', runId, {
+          operation: 'schema_detection_no_table',
+          table: tableName
+        });
+        // Default to snake_case for new tables
+        this.schemaTypeCache.set(safeTableName, 'snake_case');
+        return 'snake_case';
+      }
+
+      // Check if columns follow snake_case pattern (has underscores, lowercase)
+      const hasSnakeCaseColumns = columns.some(col => 
+        col.column_name.includes('_') && col.column_name === col.column_name.toLowerCase()
+      );
+
+      // Check for typical Prisma @map patterns (original field names with spaces/capitals)
+      const hasPrismaMapColumns = columns.some(col => 
+        col.column_name.includes(' ') || /[A-Z]/.test(col.column_name)
+      );
+
+      const schemaType = hasPrismaMapColumns ? 'prisma_map' : 'snake_case';
+      
+      this.logger.debug('Schema type detected', runId, {
+        operation: 'schema_detection_result',
+        table: tableName,
+        schemaType,
+        sampleColumns: columns.slice(0, 3).map(c => c.column_name)
+      });
+
+      // Cache the result
+      this.schemaTypeCache.set(safeTableName, schemaType);
+      return schemaType;
+
+    } catch (error) {
+      this.logger.error('Schema detection failed', runId, {
+        operation: 'schema_detection_error',
+        table: tableName,
+        error: error.message
+      });
+      // Default to snake_case on error
+      this.schemaTypeCache.set(safeTableName, 'snake_case');
+      return 'snake_case';
+    }
+  }
+
+  /**
+   * Get appropriate field mapping based on schema type
+   * @param {string} originalFieldName - Original Bubble field name
+   * @param {string} schemaType - 'snake_case' or 'prisma_map'
+   * @returns {string} Mapped field name for database
+   */
+  getFieldMapping(originalFieldName, schemaType) {
+    if (schemaType === 'prisma_map') {
+      // For Prisma @map approach, use original field names
+      return originalFieldName;
+    } else {
+      // For SchemaCreationService approach, convert to snake_case
+      return originalFieldName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    }
+  }
+
   async upsertRecordDirect(tableName, bubbleRecord, recordId, runId) {
-    this.logger.debug('Starting direct upsert with raw Bubble field names', runId, {
-      operation: 'direct_upsert_start',
+    this.logger.debug('Starting adaptive upsert with schema detection', runId, {
+      operation: 'adaptive_upsert_start',
       table: tableName,
       recordId,
       bubbleFields: Object.keys(bubbleRecord).filter(k => k !== '_id').slice(0, 3)
@@ -722,18 +807,28 @@ class DataSyncService {
         throw new Error('Record missing required _id field');
       }
 
-      // Build database record using schema creation service column names
-      const dbRecord = {
-        'bubble_id': bubbleId // Use bubble_id as created by schema service
-      };
+      // Detect schema type for this table
+      const schemaType = await this.detectSchemaType(tableName, runId);
+      
+      this.logger.debug('Using schema type for field mapping', runId, {
+        operation: 'schema_type_detected',
+        table: tableName,
+        schemaType
+      });
 
-      // Add all other fields using snake_case names (matching schema creation)
+      // Build database record using adaptive field mapping
+      const dbRecord = {};
+      
+      // Handle bubble_id field (always snake_case for compatibility)
+      dbRecord['bubble_id'] = bubbleId;
+
+      // Add all other fields using adaptive mapping
       Object.keys(bubbleRecord).forEach(fieldName => {
         if (fieldName !== '_id') {
           const value = bubbleRecord[fieldName];
           
-          // Convert field name to snake_case (matching schema creation service)
-          const columnName = fieldName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+          // Use adaptive field mapping based on detected schema type
+          const columnName = this.getFieldMapping(fieldName, schemaType);
           
           // Handle different data types with proper PostgreSQL array/JSONB handling
           if (Array.isArray(value)) {
@@ -755,9 +850,10 @@ class DataSyncService {
         }
       });
 
-      this.logger.debug('Built database record with raw field names', runId, {
-        operation: 'db_record_build',
+      this.logger.debug('Built database record with adaptive field mapping', runId, {
+        operation: 'adaptive_record_build',
         table: tableName,
+        schemaType,
         dbFields: Object.keys(dbRecord).slice(0, 5)
       });
 
@@ -789,9 +885,10 @@ class DataSyncService {
         }
 
         this.logger.debug('Record updated successfully', runId, {
-          operation: 'direct_update_success',
+          operation: 'adaptive_update_success',
           table: tableName,
-          recordId
+          recordId,
+          schemaType
         });
 
         return { success: true, action: 'updated' };
@@ -808,17 +905,18 @@ class DataSyncService {
         );
 
         this.logger.debug('Record inserted successfully', runId, {
-          operation: 'direct_insert_success',
+          operation: 'adaptive_insert_success',
           table: tableName,
-          recordId
+          recordId,
+          schemaType
         });
 
         return { success: true, action: 'inserted' };
       }
 
     } catch (error) {
-      this.logger.error('Direct upsert failed', runId, {
-        operation: 'direct_upsert_error',
+      this.logger.error('Adaptive upsert failed', runId, {
+        operation: 'adaptive_upsert_error',
         table: tableName,
         recordId,
         error: error.message,
@@ -1013,6 +1111,26 @@ class DataSyncService {
         success: false,
         error: error.message
       };
+    }
+  }
+
+  /**
+   * Clear schema type cache (useful when tables are recreated)
+   * @param {string} tableName - Optional specific table to clear, or clear all if not provided
+   */
+  clearSchemaCache(tableName = null) {
+    if (tableName) {
+      const safeTableName = tableName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+      this.schemaTypeCache.delete(safeTableName);
+      this.logger.debug('Schema cache cleared for table', null, {
+        operation: 'schema_cache_clear_single',
+        table: tableName
+      });
+    } else {
+      this.schemaTypeCache.clear();
+      this.logger.debug('Schema cache cleared for all tables', null, {
+        operation: 'schema_cache_clear_all'
+      });
     }
   }
 }
