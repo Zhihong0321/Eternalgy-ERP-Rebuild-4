@@ -657,16 +657,16 @@ class DataSyncService {
   }
 
   /**
-   * Convert transformed record back to original Bubble field names for database
-   * CRITICAL: Prisma @map() uses original Bubble field names as database columns
+   * Convert transformed record for database using camelCase column names
+   * REALITY: The Prisma schema generation actually created camelCase columns, not @map()
    */
   async convertToDbFieldNames(transformedRecord, tableName, runId) {
     const dbRecord = {
       bubble_id: transformedRecord.bubbleId // Standard mapping
     };
 
-    // We need to reverse the camelCase conversion back to original Bubble field names
-    // This matches the @map() directives in the Prisma schema
+    // Use camelCase field names directly as database columns
+    // The actual schema generation created columns with camelCase names
     Object.keys(transformedRecord).forEach(camelCaseField => {
       if (camelCaseField === 'bubbleId') {
         return; // Already handled
@@ -674,18 +674,14 @@ class DataSyncService {
 
       const value = transformedRecord[camelCaseField];
       
-      // Convert camelCase back to original Bubble field name
-      const originalFieldName = this.camelCaseToOriginal(camelCaseField);
-      
-      // Use original Bubble field name as database column (matches @map())
-      dbRecord[originalFieldName] = value;
+      // Use camelCase field name directly as database column
+      dbRecord[camelCaseField] = value;
     });
 
-    this.logger.debug('Converted to original Bubble field names for database', runId, {
-      operation: 'field_name_reverse_mapping',
+    this.logger.debug('Using camelCase field names as database columns', runId, {
+      operation: 'field_name_direct_mapping',
       table: tableName,
-      camelCaseFields: Object.keys(transformedRecord).filter(f => f !== 'bubbleId').slice(0, 5),
-      dbFields: Object.keys(dbRecord).filter(f => f !== 'bubble_id').slice(0, 5)
+      camelCaseFields: Object.keys(transformedRecord).filter(f => f !== 'bubbleId').slice(0, 5)
     });
 
     return dbRecord;
