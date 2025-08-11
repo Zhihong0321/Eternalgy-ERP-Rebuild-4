@@ -735,10 +735,12 @@ class DataSyncService {
           // Convert field name to snake_case (matching schema creation service)
           const columnName = fieldName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
           
-          // Handle different data types
+          // Handle different data types with proper JSONB casting
           if (Array.isArray(value)) {
+            // For PostgreSQL JSONB columns, pass as JSON string
             dbRecord[columnName] = JSON.stringify(value);
           } else if (typeof value === 'object' && value !== null) {
+            // For PostgreSQL JSONB columns, pass as JSON string
             dbRecord[columnName] = JSON.stringify(value);
           } else {
             dbRecord[columnName] = value;
