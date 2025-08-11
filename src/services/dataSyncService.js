@@ -241,8 +241,12 @@ class DataSyncService {
     };
 
     try {
-      // Ensure the table exists in database schema
-      await this.ensureTableExists(tableName, records, runId);
+      // CRITICAL FIX: Use existing Prisma schema instead of creating custom tables
+      // The Prisma schema has correct TIMESTAMP columns for date fields
+      this.logger.info('Using existing Prisma schema (no custom table creation)', runId, {
+        operation: 'prisma_schema_usage',
+        table: tableName
+      });
 
       // Process each record individually (fail-fast approach)
       for (let i = 0; i < records.length; i++) {
@@ -250,11 +254,11 @@ class DataSyncService {
         const recordId = record._id || record.id || `record_${i}`;
 
         try {
-          // Transform record for database (basic field mapping)
-          const transformedRecord = this.transformRecord(record, tableName);
+          // Transform record with proper data type conversion
+          const transformedRecord = this.transformRecordWithTypes(record, tableName, runId);
 
-          // Upsert record to database
-          const upsertResult = await this.upsertRecord(tableName, transformedRecord, recordId, runId);
+          // Upsert record using Prisma with proper field mapping
+          const upsertResult = await this.upsertRecordViaPrisma(tableName, transformedRecord, recordId, runId);
           
           if (upsertResult.success) {
             syncResult.synced++;
@@ -424,7 +428,119 @@ class DataSyncService {
   }
 
   /**
-   * Transform Bubble record for database storage
+   * Transform Bubble record with proper data type conversion for Prisma schema
+   * CRITICAL: Converts ISO date strings to Date objects for TIMESTAMP columns
+   */
+  transformRecordWithTypes(record, tableName, runId) {
+    this.logger.debug('Starting record transformation with type conversion', runId, {
+      operation: 'record_transform_start',
+      table: tableName,
+      recordId: record._id
+    });
+
+    const transformed = {
+      bubbleId: record._id || record.id // Map to Prisma field name
+    };
+
+    // Process each field with proper type conversion
+    Object.keys(record).forEach(originalFieldName => {
+      if (originalFieldName === '_id' || originalFieldName === 'id') {
+        return; // Skip, already handled as bubbleId
+      }
+
+      const value = record[originalFieldName];
+      const prismaFieldName = this.toCamelCase(originalFieldName);
+      
+      // CRITICAL FIX: Convert date strings to Date objects for TIMESTAMP columns
+      if (typeof value === 'string' && this.isDateString(value)) {
+        try {
+          transformed[prismaFieldName] = new Date(value);
+          this.logger.debug('Converted date string to Date object', runId, {
+            operation: 'date_conversion',
+            field: originalFieldName,
+            originalValue: value,
+            convertedValue: transformed[prismaFieldName].toISOString()
+          });
+        } catch (dateError) {
+          this.logger.warn('Date conversion failed, using string', runId, {
+            operation: 'date_conversion_fallback',
+            field: originalFieldName,
+            value: value,
+            error: dateError.message
+          });
+          transformed[prismaFieldName] = value;
+        }
+      }
+      // Handle arrays as JSON strings
+      else if (Array.isArray(value)) {
+        transformed[prismaFieldName] = JSON.stringify(value);
+      }
+      // Handle objects as JSON strings
+      else if (typeof value === 'object' && value !== null) {
+        transformed[prismaFieldName] = JSON.stringify(value);
+      }
+      // Handle null/undefined
+      else if (value === null || value === undefined) {
+        transformed[prismaFieldName] = null;
+      }
+      // Handle primitives (string, number, boolean)
+      else {
+        transformed[prismaFieldName] = value;
+      }
+    });
+
+    this.logger.debug('Record transformation completed', runId, {
+      operation: 'record_transform_complete',
+      table: tableName,
+      originalFields: Object.keys(record).length,
+      transformedFields: Object.keys(transformed).length
+    });
+
+    return transformed;
+  }
+
+  /**
+   * Check if string looks like a date (same logic as schema generation)
+   */
+  isDateString(str) {
+    if (typeof str !== 'string') return false;
+    
+    // Bubble typically uses ISO 8601 format
+    const isoDatePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/;
+    return isoDatePattern.test(str) && !isNaN(Date.parse(str));
+  }
+
+  /**
+   * Convert field name to camelCase (same logic as schema generation)
+   */
+  toCamelCase(str) {
+    if (!str || typeof str !== 'string') return 'unknownField';
+    
+    let result = str
+      .replace(/[^a-zA-Z0-9\s]/g, '')  // Remove %, _, etc.
+      .replace(/\s+/g, ' ')            // Normalize spaces
+      .split(' ')
+      .map((word, i) => {
+        if (i === 0) return word.toLowerCase();
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join('');
+
+    // Fix: Field names cannot start with numbers in Prisma
+    if (/^\d/.test(result)) {
+      result = 'field' + result.charAt(0).toUpperCase() + result.slice(1);
+    }
+
+    // Fallback for empty or invalid results
+    if (!result || result === '') {
+      result = 'unknownField';
+    }
+
+    return result;
+  }
+
+  /**
+   * Transform Bubble record for database storage (LEGACY - kept for compatibility)
    */
   transformRecord(record, tableName) {
     const transformed = {
@@ -451,7 +567,87 @@ class DataSyncService {
   }
 
   /**
-   * Upsert single record to database
+   * Upsert record using Prisma client with proper field mapping
+   * CRITICAL: Uses the existing Prisma schema with proper TIMESTAMP columns
+   */
+  async upsertRecordViaPrisma(tableName, transformedRecord, recordId, runId) {
+    this.logger.debug('Starting Prisma upsert', runId, {
+      operation: 'prisma_upsert_start',
+      table: tableName,
+      recordId,
+      fields: Object.keys(transformedRecord).length
+    });
+
+    try {
+      // Get the Prisma model name (PascalCase version of tableName)
+      const modelName = this.toPascalCase(tableName);
+      
+      // Access the model dynamically from Prisma client
+      const model = this.prisma[modelName.toLowerCase()];
+      
+      if (!model) {
+        throw new Error(`Prisma model '${modelName}' not found. Available models: ${Object.keys(this.prisma).join(', ')}`);
+      }
+
+      this.logger.debug('Using Prisma model for upsert', runId, {
+        operation: 'prisma_model_found',
+        table: tableName,
+        modelName: modelName,
+        bubbleId: transformedRecord.bubbleId
+      });
+
+      // Perform upsert using Prisma client
+      const result = await model.upsert({
+        where: {
+          bubbleId: transformedRecord.bubbleId
+        },
+        update: transformedRecord,
+        create: transformedRecord
+      });
+
+      this.logger.debug('Prisma upsert completed', runId, {
+        operation: 'prisma_upsert_success',
+        table: tableName,
+        recordId,
+        prismaId: result.id,
+        action: result.id ? 'upserted' : 'created'
+      });
+
+      return { 
+        success: true, 
+        action: 'upserted',
+        prismaId: result.id
+      };
+
+    } catch (error) {
+      this.logger.error('Prisma upsert failed', runId, {
+        operation: 'prisma_upsert_error',
+        table: tableName,
+        recordId,
+        error: error.message,
+        transformedFields: Object.keys(transformedRecord)
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Convert data type name to PascalCase for Prisma model names
+   */
+  toPascalCase(str) {
+    if (!str || typeof str !== 'string') return 'UnknownModel';
+    
+    return str
+      .replace(/[^a-zA-Z0-9\s_]/g, '')
+      .replace(/[_\s]+/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join('');
+  }
+
+  /**
+   * Upsert single record to database (LEGACY - kept for compatibility)
    */
   async upsertRecord(tableName, record, recordId, runId) {
     const safeTableName = tableName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
