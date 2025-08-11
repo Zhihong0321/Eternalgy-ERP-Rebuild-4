@@ -692,17 +692,37 @@ class DataSyncService {
   }
 
   /**
-   * Convert camelCase back to original field name (simplified approach)
+   * Convert camelCase back to original Bubble field name with special cases
+   * CRITICAL: Must match exact Bubble field names for @map() compatibility
    */
   camelCaseToOriginal(camelCaseField) {
-    // This is a simplified reverse conversion
-    // Convert camelCase to space-separated words
-    return camelCaseField
+    // Handle special cases that don't convert cleanly
+    const specialCases = {
+      'commissionPaid': 'Commission Paid?',
+      'name': 'Name',
+      'modifiedDate': 'Modified Date', 
+      'createdDate': 'Created Date',
+      'createdBy': 'Created By',
+      'invoiceDate': 'Invoice Date',
+      'linkedInvoiceItem': 'Linked Invoice Item',
+      'linkedCustomer': 'Linked Customer',
+      'linkedAgent': 'Linked Agent',
+      'linkedPayment': 'Linked Payment'
+    };
+
+    if (specialCases[camelCaseField]) {
+      return specialCases[camelCaseField];
+    }
+
+    // For other fields, convert camelCase to Title Case with spaces
+    const converted = camelCaseField
       .replace(/([A-Z])/g, ' $1')
       .trim()
       .split(' ')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ');
+
+    return converted;
   }
 
   /**
