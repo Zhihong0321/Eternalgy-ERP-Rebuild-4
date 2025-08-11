@@ -657,16 +657,16 @@ class DataSyncService {
   }
 
   /**
-   * Convert field names to database column names (use camelCase as column names)
-   * SIMPLE: The schema generation already created columns with camelCase names
+   * Convert transformed record back to original Bubble field names for database
+   * CRITICAL: Prisma @map() uses original Bubble field names as database columns
    */
   async convertToDbFieldNames(transformedRecord, tableName, runId) {
     const dbRecord = {
-      bubble_id: transformedRecord.bubbleId // Map bubbleId -> bubble_id (standard)
+      bubble_id: transformedRecord.bubbleId // Standard mapping
     };
 
-    // Use camelCase field names directly as column names
-    // The Prisma schema generation should have created columns with these names
+    // We need to reverse the camelCase conversion back to original Bubble field names
+    // This matches the @map() directives in the Prisma schema
     Object.keys(transformedRecord).forEach(camelCaseField => {
       if (camelCaseField === 'bubbleId') {
         return; // Already handled
@@ -674,14 +674,18 @@ class DataSyncService {
 
       const value = transformedRecord[camelCaseField];
       
-      // Use camelCase field name directly as column name
-      dbRecord[camelCaseField] = value;
+      // Convert camelCase back to original Bubble field name
+      const originalFieldName = this.camelCaseToOriginal(camelCaseField);
+      
+      // Use original Bubble field name as database column (matches @map())
+      dbRecord[originalFieldName] = value;
     });
 
-    this.logger.debug('Using camelCase field names as column names', runId, {
-      operation: 'field_name_direct_mapping',
+    this.logger.debug('Converted to original Bubble field names for database', runId, {
+      operation: 'field_name_reverse_mapping',
       table: tableName,
-      fields: Object.keys(dbRecord)
+      camelCaseFields: Object.keys(transformedRecord).filter(f => f !== 'bubbleId').slice(0, 5),
+      dbFields: Object.keys(dbRecord).filter(f => f !== 'bubble_id').slice(0, 5)
     });
 
     return dbRecord;
