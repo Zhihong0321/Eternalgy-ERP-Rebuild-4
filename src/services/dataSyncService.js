@@ -688,29 +688,55 @@ class DataSyncService {
   }
 
   /**
-   * Convert camelCase back to original Bubble field name with special cases
-   * CRITICAL: Must match exact Bubble field names for @map() compatibility
+   * Fixed translator for standard Bubble fields + common patterns
+   * UNIVERSAL: All Bubble data has Created Date, Modified Date, Created By, etc.
    */
   camelCaseToOriginal(camelCaseField) {
-    // Handle special cases that don't convert cleanly
-    const specialCases = {
-      'commissionPaid': 'Commission Paid?',
-      'name': 'Name',
-      'modifiedDate': 'Modified Date', 
+    // FIXED TRANSLATOR for standard Bubble fields (universal)
+    const universalBubbleFields = {
+      // Standard Bubble system fields (present in ALL tables)
       'createdDate': 'Created Date',
+      'modifiedDate': 'Modified Date', 
       'createdBy': 'Created By',
+      
+      // Common Bubble field patterns
+      'name': 'Name',
+      'categoryName': 'Category Name',
       'invoiceDate': 'Invoice Date',
+      'invoiceId': 'Invoice ID',
+      
+      // Commission related fields (invoice table)
+      'commissionPaid': 'Commission Paid?',
+      'normalCommission': 'Normal Commission',
+      'performanceTierYear': 'Performance Tier Year',
+      'performanceTierMonth': 'Performance Tier Month',
+      'amountEligibleForComm': 'Amount Eligible for Comm',
+      
+      // Linked object fields (common pattern)
       'linkedInvoiceItem': 'Linked Invoice Item',
       'linkedCustomer': 'Linked Customer',
       'linkedAgent': 'Linked Agent',
-      'linkedPayment': 'Linked Payment'
+      'linkedPayment': 'Linked Payment',
+      'linkedPackage': 'Linked Package',
+      'linkedProducts': 'Linked Products',
+      
+      // Percentage fields (common pattern)
+      'field1StPayment': '1st Payment %',
+      'field2NdPayment': '2nd Payment %',
+      'percentOfTotalAmount': 'Percent of Total Amount',
+      
+      // Other common patterns
+      'panelQty': 'Panel Qty',
+      'invoiceCount': 'Invoice Count',
+      'grandStrategy': 'Grand Strategy'
     };
 
-    if (specialCases[camelCaseField]) {
-      return specialCases[camelCaseField];
+    // Check fixed translator first
+    if (universalBubbleFields[camelCaseField]) {
+      return universalBubbleFields[camelCaseField];
     }
 
-    // For other fields, convert camelCase to Title Case with spaces
+    // Fallback: convert camelCase to Title Case with spaces
     const converted = camelCaseField
       .replace(/([A-Z])/g, ' $1')
       .trim()
