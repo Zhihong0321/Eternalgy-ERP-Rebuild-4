@@ -507,4 +507,70 @@ function groupLogsByRun(logs) {
     .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 }
 
+// Simple test endpoint to verify database storage capability
+router.post('/test/:tableName', async (req, res) => {
+  const runId = logger.generateRunId();
+  const startTime = Date.now();
+  const tableName = req.params.tableName;
+  const limit = parseInt(req.query.limit) || 2;
+  
+  logger.info('API request: Database storage test', runId, {
+    endpoint: 'test_storage',
+    table: tableName,
+    limit
+  });
+
+  try {
+    const { PrismaClient } = await import('@prisma/client');
+    const prisma = new PrismaClient();
+
+    // Simple test: just try to insert a basic record
+    const testId = `test_${Date.now()}`;
+    const safeTableName = tableName.toLowerCase();
+
+    // Test if we can insert basic data into the table
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "${safeTableName}" ("bubble_id") VALUES ($1) ON CONFLICT ("bubble_id") DO NOTHING`,
+      testId
+    );
+
+    // Check if the record exists
+    const result = await prisma.$queryRawUnsafe(
+      `SELECT "bubble_id" FROM "${safeTableName}" WHERE "bubble_id" = $1 LIMIT 1`,
+      testId
+    );
+
+    await prisma.$disconnect();
+
+    res.json({
+      success: true,
+      runId,
+      endpoint: 'test_storage',
+      table: tableName,
+      testId,
+      canInsert: result.length > 0,
+      message: result.length > 0 ? 'Database storage working!' : 'Insert may have failed',
+      duration: Date.now() - startTime,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    logger.error('Database storage test failed', runId, {
+      table: tableName,
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      runId,
+      endpoint: 'test_storage',
+      table: tableName,
+      error: error.message,
+      canInsert: false,
+      duration: Date.now() - startTime,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 export default router;
