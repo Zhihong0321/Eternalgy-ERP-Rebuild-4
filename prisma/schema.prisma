@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,14 +7,26 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Dynamic models will be generated here by the sync service
-// Following the pattern from PSD documentation
+model sync_status {
+  id           String    @id
+  running      Boolean   @default(false)
+  progress     Int       @default(0)
+  currentTable String?
+  lastSync     DateTime?
+  error        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime
+}
 
-// Temporary model for deployment - will be replaced by dynamic generation
-model BubbleSync {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@map("bubble_sync")
+model synced_records {
+  id             String   @id
+  bubble_id      String   @unique
+  data_type      String
+  raw_data       Json
+  processed_data Json?
+  synced_at      DateTime @default(now())
+  updated_at     DateTime
+
+  @@index([bubble_id])
+  @@index([data_type])
 }

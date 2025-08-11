@@ -254,11 +254,8 @@ class DataSyncService {
         const recordId = record._id || record.id || `record_${i}`;
 
         try {
-          // Transform record with proper data type conversion
-          const transformedRecord = this.transformRecordWithTypes(record, tableName, runId);
-
-          // Upsert record using Prisma with proper field mapping
-          const upsertResult = await this.upsertRecordViaPrisma(tableName, transformedRecord, recordId, runId);
+          // SIMPLIFIED: Direct upsert with raw Bubble field names
+          const upsertResult = await this.upsertRecordDirect(tableName, record, recordId, runId);
           
           if (upsertResult.success) {
             syncResult.synced++;
@@ -327,73 +324,38 @@ class DataSyncService {
   }
 
   /**
-   * Ensure database table exists (basic schema handling)
+   * FIXED: Use existing tables created by SchemaCreationService
+   * Skip table creation - tables already exist with correct Bubble field names
    */
   async ensureTableExists(tableName, sampleRecords, runId) {
-    this.logger.info('Ensuring table exists in database', runId, {
-      operation: 'table_ensure_start',
+    this.logger.info('Using existing table created by SchemaCreationService', runId, {
+      operation: 'table_exists_check',
       table: tableName
     });
 
     try {
       const safeTableName = tableName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-      const sampleRecord = sampleRecords[0] || {};
-      const fields = Object.keys(sampleRecord);
       
-      // Check if table exists and if it has the correct schema
+      // Simply verify table exists (no schema changes)
       try {
-        // Try to query synced_at column to see if it exists
         await this.prisma.$queryRawUnsafe(
-          `SELECT synced_at FROM "${safeTableName}" LIMIT 1`
+          `SELECT 1 FROM "${safeTableName}" LIMIT 1`
         );
         
-        this.logger.info('Table exists with correct schema', runId, {
-          operation: 'table_schema_valid',
+        this.logger.info('Table exists and ready for sync', runId, {
+          operation: 'table_exists_confirmed',
           table: tableName
         });
         return;
         
-      } catch (schemaError) {
-        // Table exists but has wrong schema, recreate it
-        if (schemaError.message.includes('column "synced_at" of relation')) {
-          this.logger.warn('Table exists with wrong schema, recreating', runId, {
-            operation: 'table_schema_mismatch',
-            table: tableName,
-            error: schemaError.message
-          });
-          
-          // Drop existing table and recreate with correct schema
-          await this.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${safeTableName}"`);
-          
-          this.logger.info('Dropped existing table', runId, {
-            operation: 'table_dropped',
-            table: tableName
-          });
-        }
+      } catch (tableError) {
+        // Table doesn't exist - this shouldn't happen after schema creation
+        throw new Error(`Table "${tableName}" does not exist. Run schema creation first: POST /api/schema/create-all`);
       }
-      
-      // Create table with correct schema
-      const tableSql = this.generateTableSQL(tableName, fields);
-      
-      this.logger.debug('Creating table with correct schema', runId, {
-        operation: 'table_create_sql',
-        table: tableName,
-        fields: fields.length,
-        sql: tableSql.substring(0, 200) + '...'
-      });
-
-      // Execute table creation
-      await this.prisma.$executeRawUnsafe(tableSql);
-
-      this.logger.info('Table created successfully', runId, {
-        operation: 'table_ensure_success',
-        table: tableName,
-        fields: fields.length
-      });
 
     } catch (error) {
-      this.logger.error('Failed to ensure table exists', runId, {
-        operation: 'table_ensure_error',
+      this.logger.error('Table existence check failed', runId, {
+        operation: 'table_check_error',
         table: tableName,
         error: error.message
       });
@@ -657,37 +619,13 @@ class DataSyncService {
   }
 
   /**
-   * Convert transformed record back to original Bubble field names for database
-   * FINAL FIX: Use the fixed translator we just created
+   * SIMPLIFIED: Convert record directly using raw Bubble field names
+   * Skip all camelCase conversion - use exact field names from Bubble
    */
   async convertToDbFieldNames(transformedRecord, tableName, runId) {
-    const dbRecord = {
-      bubble_id: transformedRecord.bubbleId // Standard mapping
-    };
-
-    // Convert camelCase back to original Bubble field names using our fixed translator
-    Object.keys(transformedRecord).forEach(camelCaseField => {
-      if (camelCaseField === 'bubbleId') {
-        return; // Already handled
-      }
-
-      const value = transformedRecord[camelCaseField];
-      
-      // Use our fixed translator to get original Bubble field name
-      const originalFieldName = this.camelCaseToOriginal(camelCaseField);
-      
-      // Use original Bubble field name as database column (matches Prisma @map)
-      dbRecord[originalFieldName] = value;
-    });
-
-    this.logger.debug('Using fixed translator for database field names', runId, {
-      operation: 'fixed_translator_mapping',
-      table: tableName,
-      camelCaseFields: Object.keys(transformedRecord).filter(f => f !== 'bubbleId').slice(0, 3),
-      dbFields: Object.keys(dbRecord).filter(f => f !== 'bubble_id').slice(0, 3)
-    });
-
-    return dbRecord;
+    // This method should never be called with the new approach
+    // but keeping for compatibility
+    throw new Error('convertToDbFieldNames should not be called with raw field approach');
   }
 
   /**
@@ -762,6 +700,121 @@ class DataSyncService {
       .split(' ')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join('');
+  }
+
+  /**
+   * DIRECT UPSERT: Work with exact Bubble field names as they exist in database
+   * No field name conversion - use raw Bubble fields directly
+   */
+  async upsertRecordDirect(tableName, bubbleRecord, recordId, runId) {
+    this.logger.debug('Starting direct upsert with raw Bubble field names', runId, {
+      operation: 'direct_upsert_start',
+      table: tableName,
+      recordId,
+      bubbleFields: Object.keys(bubbleRecord).filter(k => k !== '_id').slice(0, 3)
+    });
+
+    try {
+      const safeTableName = tableName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+      const bubbleId = bubbleRecord._id || bubbleRecord.id;
+      
+      if (!bubbleId) {
+        throw new Error('Record missing required _id field');
+      }
+
+      // Build database record using exact Bubble field names (no conversion)
+      const dbRecord = {
+        '_id': bubbleId // Use _id as the primary identifier
+      };
+
+      // Add all other fields using their exact Bubble names
+      Object.keys(bubbleRecord).forEach(fieldName => {
+        if (fieldName !== '_id') {
+          const value = bubbleRecord[fieldName];
+          
+          // Handle different data types
+          if (Array.isArray(value)) {
+            dbRecord[fieldName] = JSON.stringify(value);
+          } else if (typeof value === 'object' && value !== null) {
+            dbRecord[fieldName] = JSON.stringify(value);
+          } else {
+            dbRecord[fieldName] = value;
+          }
+        }
+      });
+
+      this.logger.debug('Built database record with raw field names', runId, {
+        operation: 'db_record_build',
+        table: tableName,
+        dbFields: Object.keys(dbRecord).slice(0, 5)
+      });
+
+      // Check if record exists
+      const existingRecords = await this.prisma.$queryRawUnsafe(
+        `SELECT "_id" FROM "${safeTableName}" WHERE "_id" = $1 LIMIT 1`,
+        bubbleId
+      );
+
+      const isUpdate = existingRecords.length > 0;
+      
+      if (isUpdate) {
+        // Update existing record
+        const updateFields = Object.keys(dbRecord)
+          .filter(key => key !== '_id')
+          .map((key, index) => `"${key}" = $${index + 2}`)
+          .join(', ');
+
+        if (updateFields) {
+          const updateValues = Object.keys(dbRecord)
+            .filter(key => key !== '_id')
+            .map(key => dbRecord[key]);
+
+          await this.prisma.$queryRawUnsafe(
+            `UPDATE "${safeTableName}" SET ${updateFields} WHERE "_id" = $1`,
+            bubbleId,
+            ...updateValues
+          );
+        }
+
+        this.logger.debug('Record updated successfully', runId, {
+          operation: 'direct_update_success',
+          table: tableName,
+          recordId
+        });
+
+        return { success: true, action: 'updated' };
+        
+      } else {
+        // Insert new record
+        const fields = Object.keys(dbRecord).map(key => `"${key}"`).join(', ');
+        const placeholders = Object.keys(dbRecord).map((_, index) => `$${index + 1}`).join(', ');
+        const values = Object.values(dbRecord);
+
+        await this.prisma.$queryRawUnsafe(
+          `INSERT INTO "${safeTableName}" (${fields}) VALUES (${placeholders})`,
+          ...values
+        );
+
+        this.logger.debug('Record inserted successfully', runId, {
+          operation: 'direct_insert_success',
+          table: tableName,
+          recordId
+        });
+
+        return { success: true, action: 'inserted' };
+      }
+
+    } catch (error) {
+      this.logger.error('Direct upsert failed', runId, {
+        operation: 'direct_upsert_error',
+        table: tableName,
+        recordId,
+        error: error.message,
+        bubbleFields: Object.keys(bubbleRecord).slice(0, 5)
+      });
+
+      throw error;
+    }
   }
 
   /**
