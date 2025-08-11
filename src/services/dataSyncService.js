@@ -722,23 +722,26 @@ class DataSyncService {
         throw new Error('Record missing required _id field');
       }
 
-      // Build database record using exact Bubble field names (no conversion)
+      // Build database record using schema creation service column names
       const dbRecord = {
-        '_id': bubbleId // Use _id as the primary identifier
+        'bubble_id': bubbleId // Use bubble_id as created by schema service
       };
 
-      // Add all other fields using their exact Bubble names
+      // Add all other fields using snake_case names (matching schema creation)
       Object.keys(bubbleRecord).forEach(fieldName => {
         if (fieldName !== '_id') {
           const value = bubbleRecord[fieldName];
           
+          // Convert field name to snake_case (matching schema creation service)
+          const columnName = fieldName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+          
           // Handle different data types
           if (Array.isArray(value)) {
-            dbRecord[fieldName] = JSON.stringify(value);
+            dbRecord[columnName] = JSON.stringify(value);
           } else if (typeof value === 'object' && value !== null) {
-            dbRecord[fieldName] = JSON.stringify(value);
+            dbRecord[columnName] = JSON.stringify(value);
           } else {
-            dbRecord[fieldName] = value;
+            dbRecord[columnName] = value;
           }
         }
       });
@@ -751,7 +754,7 @@ class DataSyncService {
 
       // Check if record exists
       const existingRecords = await this.prisma.$queryRawUnsafe(
-        `SELECT "_id" FROM "${safeTableName}" WHERE "_id" = $1 LIMIT 1`,
+        `SELECT "bubble_id" FROM "${safeTableName}" WHERE "bubble_id" = $1 LIMIT 1`,
         bubbleId
       );
 
@@ -760,17 +763,17 @@ class DataSyncService {
       if (isUpdate) {
         // Update existing record
         const updateFields = Object.keys(dbRecord)
-          .filter(key => key !== '_id')
+          .filter(key => key !== 'bubble_id')
           .map((key, index) => `"${key}" = $${index + 2}`)
           .join(', ');
 
         if (updateFields) {
           const updateValues = Object.keys(dbRecord)
-            .filter(key => key !== '_id')
+            .filter(key => key !== 'bubble_id')
             .map(key => dbRecord[key]);
 
           await this.prisma.$queryRawUnsafe(
-            `UPDATE "${safeTableName}" SET ${updateFields} WHERE "_id" = $1`,
+            `UPDATE "${safeTableName}" SET ${updateFields} WHERE "bubble_id" = $1`,
             bubbleId,
             ...updateValues
           );
