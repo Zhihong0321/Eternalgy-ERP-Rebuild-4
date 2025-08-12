@@ -27,7 +27,8 @@ const DataSync = () => {
     getSyncTables,
     wipeAllData,
     loading,
-    error
+    error,
+    syncProgress
   } = useEternalgyAPI();
   
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
@@ -38,6 +39,7 @@ const DataSync = () => {
   const [syncAllLimit, setSyncAllLimit] = useState<number>(3);
   const [tableLimits, setTableLimits] = useState<Record<string, number>>({});
   const [isSyncing, setIsSyncing] = useState<Record<string, boolean>>({});
+  const [progressTimer, setProgressTimer] = useState<NodeJS.Timeout | null>(null);
 
   const fetchSyncData = async () => {
     setIsRefreshing(true);
@@ -88,6 +90,27 @@ const DataSync = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Progress timer for sync operations
+  useEffect(() => {
+    if (syncProgress.isActive) {
+      const timer = setInterval(() => {
+        // Force re-render to update timer display
+        setProgressTimer(prev => prev);
+      }, 1000);
+      setProgressTimer(timer);
+      
+      return () => {
+        if (timer) clearInterval(timer);
+        setProgressTimer(null);
+      };
+    } else {
+      if (progressTimer) {
+        clearInterval(progressTimer);
+        setProgressTimer(null);
+      }
+    }
+  }, [syncProgress.isActive, progressTimer]);
+
   const handleWipeAllData = async () => {
     if (!confirm('⚠️ WARNING: This will delete ALL data from PostgreSQL database. Are you sure?')) {
       return;
@@ -102,24 +125,28 @@ const DataSync = () => {
   const handleSyncAllTables = async () => {
     setIsSyncing(prev => ({ ...prev, 'all': true }));
     
-    const result = await syncAllTables(syncAllLimit);
-    if (result) {
-      setTimeout(fetchSyncData, 2000);
+    try {
+      const result = await syncAllTables(syncAllLimit);
+      if (result) {
+        setTimeout(fetchSyncData, 2000);
+      }
+    } finally {
+      setIsSyncing(prev => ({ ...prev, 'all': false }));
     }
-    
-    setIsSyncing(prev => ({ ...prev, 'all': false }));
   };
 
   const handleSyncTable = async (tableName: string) => {
     const limit = tableLimits[tableName] || 3;
     setIsSyncing(prev => ({ ...prev, [tableName]: true }));
     
-    const result = await syncTable(tableName, limit);
-    if (result) {
-      setTimeout(fetchSyncData, 1000);
+    try {
+      const result = await syncTable(tableName, limit);
+      if (result) {
+        setTimeout(fetchSyncData, 1000);
+      }
+    } finally {
+      setIsSyncing(prev => ({ ...prev, [tableName]: false }));
     }
-    
-    setIsSyncing(prev => ({ ...prev, [tableName]: false }));
   };
 
   const updateTableLimit = (tableName: string, limit: number) => {
@@ -186,6 +213,23 @@ const DataSync = () => {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Sync Progress Display */}
+      {syncProgress.isActive && (
+        <Alert className="border-blue-200 bg-blue-50">
+          <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+          <AlertDescription className="text-blue-800">
+            <div className="flex items-center justify-between">
+              <span>{syncProgress.message}</span>
+              {syncProgress.startTime && (
+                <span className="text-sm text-blue-600 ml-4">
+                  {Math.floor((Date.now() - syncProgress.startTime) / 1000)}s
+                </span>
+              )}
+            </div>
+          </AlertDescription>
         </Alert>
       )}
 
@@ -304,10 +348,10 @@ const DataSync = () => {
               </div>
               <Button
                 onClick={handleSyncAllTables}
-                disabled={loading || isSyncing['all']}
+                disabled={loading || isSyncing['all'] || syncProgress.isActive}
                 className="w-full"
               >
-                {isSyncing['all'] ? (
+                {isSyncing['all'] || (syncProgress.isActive && syncProgress.operation === 'batch_sync') ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                     Syncing All Tables...
@@ -383,11 +427,11 @@ const DataSync = () => {
                     />
                     <Button
                       onClick={() => handleSyncTable(table.tablename)}
-                      disabled={loading || isSyncing[table.tablename]}
+                      disabled={loading || isSyncing[table.tablename] || syncProgress.isActive}
                       size="sm"
                       className="w-20"
                     >
-                      {isSyncing[table.tablename] ? (
+                      {isSyncing[table.tablename] || (syncProgress.isActive && syncProgress.operation === `sync_${table.tablename}`) ? (
                         <RefreshCw className="h-4 w-4 animate-spin" />
                       ) : (
                         <>

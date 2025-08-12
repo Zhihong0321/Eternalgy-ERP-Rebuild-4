@@ -6,7 +6,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://eternalgy-erp
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 0, // No timeout - let operations run as long as needed
   headers: {
     'Content-Type': 'application/json',
   },
@@ -47,6 +47,16 @@ export interface BubbleConnectionStatus {
 export const useEternalgyAPI = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [syncProgress, setSyncProgress] = useState<{
+    isActive: boolean;
+    message: string;
+    operation: string;
+    startTime?: number;
+  }>({
+    isActive: false,
+    message: '',
+    operation: ''
+  });
 
   const handleRequest = async <T>(
     requestFn: () => Promise<AxiosResponse<T>>
@@ -106,12 +116,58 @@ export const useEternalgyAPI = () => {
   const triggerSync = () => handleRequest(() => api.post('/api/sync/trigger'));
   const getSyncStatus = () => handleRequest<SyncStatus>(() => api.get('/api/sync/status'));
   
-  // New sync operations
-  const syncAllTables = (globalLimit: number = 3) => 
-    handleRequest(() => api.post(`/api/sync/batch?globalLimit=${globalLimit}`));
+  // Enhanced sync operations with progress tracking
+  const syncAllTables = async (globalLimit: number = 3) => {
+    setSyncProgress({
+      isActive: true,
+      message: `Starting batch sync of all tables (limit: ${globalLimit})...`,
+      operation: 'batch_sync',
+      startTime: Date.now()
+    });
+    
+    try {
+      const result = await handleRequest(() => api.post(`/api/sync/batch?globalLimit=${globalLimit}`));
+      setSyncProgress({
+        isActive: false,
+        message: result ? 'Batch sync completed successfully!' : 'Batch sync failed',
+        operation: 'batch_sync'
+      });
+      return result;
+    } catch (error) {
+      setSyncProgress({
+        isActive: false,
+        message: `Batch sync failed: ${error}`,
+        operation: 'batch_sync'
+      });
+      throw error;
+    }
+  };
   
-  const syncTable = (tableName: string, limit: number = 3) =>
-    handleRequest(() => api.post(`/api/sync/table/${tableName}?limit=${limit}`));
+  const syncTable = async (tableName: string, limit: number = 3) => {
+    setSyncProgress({
+      isActive: true,
+      message: `Syncing ${tableName} table (${limit} records)...`,
+      operation: `sync_${tableName}`,
+      startTime: Date.now()
+    });
+    
+    try {
+      const result = await handleRequest(() => api.post(`/api/sync/table/${tableName}?limit=${limit}`));
+      setSyncProgress({
+        isActive: false,
+        message: result ? `${tableName} sync completed!` : `${tableName} sync failed`,
+        operation: `sync_${tableName}`
+      });
+      return result;
+    } catch (error) {
+      setSyncProgress({
+        isActive: false,
+        message: `${tableName} sync failed: ${error}`,
+        operation: `sync_${tableName}`
+      });
+      throw error;
+    }
+  };
   
   const getSyncTables = () => handleRequest(() => api.get('/api/database/tables'));
   
@@ -124,6 +180,7 @@ export const useEternalgyAPI = () => {
   return {
     loading,
     error,
+    syncProgress,
     checkHealth,
     getDataTypes,
     getData,
