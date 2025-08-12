@@ -362,6 +362,35 @@ class SchemaCreationService {
   }
 
   /**
+   * Check if string looks like a date (SAME logic as dataSyncService)
+   */
+  isDateString(str) {
+    if (typeof str !== 'string') return false;
+    
+    // EXPANDED: Handle various Bubble date formats
+    const datePatterns = [
+      // Standard ISO 8601 with milliseconds and Z
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/i,
+      // ISO 8601 without milliseconds with Z  
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/i,
+      // ISO 8601 with timezone offset (+00:00, -05:00)
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?[+-]\d{2}:\d{2}$/i,
+      // ISO 8601 without timezone indicator
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?$/i,
+      // Date only format (Bubble sometimes sends this)
+      /^\d{4}-\d{2}-\d{2}$/
+    ];
+    
+    // Test against all patterns
+    const matchesPattern = datePatterns.some(pattern => pattern.test(str));
+    
+    // Also verify it's a valid date that JavaScript can parse
+    const isValidDate = !isNaN(Date.parse(str));
+    
+    return matchesPattern && isValidDate;
+  }
+
+  /**
    * Analyze individual field type and detect relationships
    */
   analyzeFieldType(fieldName, value) {
@@ -430,8 +459,8 @@ class SchemaCreationService {
         }
         break;
       default:
-        // Check if it looks like a date string
-        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+        // Check if it looks like a date string (ENHANCED - matches dataSyncService)
+        if (typeof value === 'string' && this.isDateString(value)) {
           fieldInfo.sqlType = 'TIMESTAMPTZ';
         } else {
           fieldInfo.sqlType = 'TEXT';
