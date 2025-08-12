@@ -42,15 +42,13 @@ const DataSync = () => {
   const fetchSyncData = async () => {
     setIsRefreshing(true);
     
-    // Test Bubble connection
-    const connectionData = await testBubbleConnection();
-    if (connectionData) {
-      setConnectionStatus({
-        connected: connectionData.success || false,
-        message: connectionData.message || 'Connection test completed',
-        timestamp: new Date().toISOString(),
-      });
-    }
+    // REMOVED: testBubbleConnection() - was costing money on every page load!
+    // Set connection status to unknown instead of testing
+    setConnectionStatus({
+      connected: false,
+      message: 'Connection not tested (click Test Connection button)',
+      timestamp: new Date().toISOString(),
+    });
 
     // Get data types count from PostgreSQL tables
     const typesData = await getDataTypes();
@@ -241,12 +239,29 @@ const DataSync = () => {
           <CardContent>
             <div className="flex items-center space-x-2 mb-2">
               {getConnectionBadge()}
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={async () => {
+                  const connectionData = await testBubbleConnection();
+                  if (connectionData) {
+                    setConnectionStatus({
+                      connected: connectionData.success || false,
+                      message: connectionData.message || 'Connection test completed',
+                      timestamp: new Date().toISOString(),
+                    });
+                  }
+                }}
+                disabled={loading}
+              >
+                Test
+              </Button>
             </div>
             {loading ? (
               <Skeleton className="h-4 w-32" />
             ) : (
               <p className="text-xs text-muted-foreground">
-                {connectionStatus?.message || 'Testing connection...'}
+                {connectionStatus?.message || 'Click Test to check connection'}
               </p>
             )}
           </CardContent>
