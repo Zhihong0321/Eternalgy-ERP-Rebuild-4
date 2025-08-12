@@ -113,11 +113,13 @@ import bubbleRoutes from './api/bubble.js';
 import syncRoutes from './api/sync.js';
 import logsRoutes from './api/logs.js';
 import schemaRoutes from './api/schema.js';
+import databaseRoutes from './api/database.js';
 
 app.use('/api/bubble', bubbleRoutes);
 app.use('/api/schema', schemaRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/logs', logsRoutes);
+app.use('/api/database', databaseRoutes);
 
 // Catch-all handler: send back React's index.html file for any non-API routes
 app.get('*', (req, res) => {

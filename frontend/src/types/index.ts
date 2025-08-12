@@ -37,6 +37,18 @@ export interface TableData {
   total: number;
   page: number;
   limit: number;
+  totalPages?: number;
+}
+
+export interface DatabaseTablesResponse {
+  success: boolean;
+  tables: Array<{
+    name: string;
+    tablename: string;
+    recordCount: number;
+    withData: boolean;
+  }>;
+  count: number;
 }
 
 // Navigation Types

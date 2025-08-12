@@ -68,22 +68,36 @@ export const useEternalgyAPI = () => {
   // Health check
   const checkHealth = () => handleRequest(() => api.get('/health'));
 
-  // Data types
-  const getDataTypes = () => handleRequest<DataType[]>(() => api.get('/api/bubble/discover-types'));
+  // Data types (for Data Browser - reads from PostgreSQL)
+  const getDataTypes = () => handleRequest(() => api.get('/api/database/tables'));
 
-  // Data fetching
+  // Data fetching (for Data Browser - reads from PostgreSQL)
   const getData = (dataType: string, params?: { page?: number; limit?: number; search?: string }) => {
     const queryParams = new URLSearchParams();
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.search) queryParams.append('search', params.search);
-    // Note: Bubble API doesn't support pagination, so we ignore page param
+    if (params?.page && params.page > 1) {
+      const offset = (params.page - 1) * (params.limit || 50);
+      queryParams.append('offset', offset.toString());
+    }
+    const queryString = queryParams.toString();
+    return handleRequest(() => api.get(`/api/database/data/${dataType}${queryString ? `?${queryString}` : ''}`));
+  };
+
+  // Data structure analysis (for Data Browser - reads from PostgreSQL)
+  const getDataStructure = (dataType: string) => 
+    handleRequest(() => api.get(`/api/database/structure/${dataType}`));
+
+  // Bubble.io specific methods (for sync operations)
+  const getBubbleDataTypes = () => handleRequest<DataType[]>(() => api.get('/api/bubble/discover-types'));
+  
+  const getBubbleData = (dataType: string, params?: { limit?: number; search?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
     const queryString = queryParams.toString();
     return handleRequest(() => api.get(`/api/bubble/fetch/${dataType}${queryString ? `?${queryString}` : ''}`));
   };
-
-  // Data structure analysis
-  const getDataStructure = (dataType: string) => 
-    handleRequest(() => api.get(`/api/bubble/analyze/${dataType}`));
     
   // Alias for compatibility
   const analyzeDataStructure = getDataStructure;
@@ -122,6 +136,9 @@ export const useEternalgyAPI = () => {
     getSyncTables,
     wipeAllData,
     testBubbleConnection,
+    // Bubble.io specific methods
+    getBubbleDataTypes,
+    getBubbleData,
   };
 };
 

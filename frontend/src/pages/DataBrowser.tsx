@@ -41,8 +41,14 @@ const DataBrowser = () => {
   const [dataStructure, setDataStructure] = useState<any>(null);
 
   const fetchDataTypes = async () => {
-    const types = await getDataTypes();
-    if (types) {
+    const response = await getDataTypes() as any;
+    if (response && response.tables) {
+      // Database API returns { tables: [...] } format
+      const types: DataType[] = response.tables.map((table: any) => ({
+        name: table.name || table.tablename,
+        fields: {},
+        recordCount: table.recordCount || 0
+      }));
       setDataTypes(types);
       if (types.length > 0 && !selectedDataType) {
         setSelectedDataType(types[0].name);
@@ -61,9 +67,18 @@ const DataBrowser = () => {
       search: searchTerm || undefined,
     };
     
-    const data = await getData(selectedDataType, params);
-    if (data) {
-      setTableData(data);
+    const response = await getData(selectedDataType, params) as any;
+    if (response && response.data) {
+      // Database API returns different format
+      const tableData: TableData = {
+        data: response.data,
+        columns: response.columns || [],
+        total: response.pagination?.total || 0,
+        page: response.pagination?.page || 1,
+        limit: pageSize,
+        totalPages: response.pagination?.totalPages || 1
+      };
+      setTableData(tableData);
     }
     
     setIsRefreshing(false);
