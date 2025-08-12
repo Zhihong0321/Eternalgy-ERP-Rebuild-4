@@ -173,6 +173,9 @@ router.delete('/drop-all', async (req, res) => {
       throw new Error('This operation requires confirmation: ?confirm=yes-drop-all-tables');
     }
 
+    // Create fresh prisma client for this operation
+    const localPrisma = new PrismaClient();
+
     // Get current tables first
     const currentStats = await schemaCreationService.getSchemaStats();
     const tablesToDrop = currentStats.tables || [];
@@ -183,7 +186,7 @@ router.delete('/drop-all', async (req, res) => {
     // Drop each table
     for (const table of tablesToDrop) {
       try {
-        await prisma.$executeRawUnsafe(
+        await localPrisma.$executeRawUnsafe(
           `DROP TABLE IF EXISTS "${table.tablename}" CASCADE`
         );
         droppedCount++;
@@ -206,6 +209,9 @@ router.delete('/drop-all', async (req, res) => {
         });
       }
     }
+
+    // Clean up prisma connection
+    await localPrisma.$disconnect();
 
     const duration = Date.now() - startTime;
 
