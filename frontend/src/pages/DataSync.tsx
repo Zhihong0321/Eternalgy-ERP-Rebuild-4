@@ -15,11 +15,10 @@ import {
   Settings,
 } from 'lucide-react';
 import { useEternalgyAPI } from '@/hooks/useEternalgyAPI';
-import type { SyncStatus, BubbleConnectionStatus, SyncTable } from '@/hooks/useEternalgyAPI';
+import type { BubbleConnectionStatus, SyncTable } from '@/hooks/useEternalgyAPI';
 
 const DataSync = () => {
   const {
-    getSyncStatus,
     testBubbleConnection,
     getDataTypes,
     syncAllTables,
@@ -31,7 +30,6 @@ const DataSync = () => {
     syncProgress
   } = useEternalgyAPI();
   
-  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<BubbleConnectionStatus | null>(null);
   const [dataTypesCount, setDataTypesCount] = useState<number>(0);
   const [syncTables, setSyncTables] = useState<SyncTable[]>([]);
@@ -44,12 +42,6 @@ const DataSync = () => {
   const fetchSyncData = async () => {
     setIsRefreshing(true);
     
-    // Get sync status
-    const syncData = await getSyncStatus();
-    if (syncData) {
-      setSyncStatus(syncData);
-    }
-
     // Test Bubble connection
     const connectionData = await testBubbleConnection();
     if (connectionData) {
@@ -60,10 +52,10 @@ const DataSync = () => {
       });
     }
 
-    // Get data types count
+    // Get data types count from PostgreSQL tables
     const typesData = await getDataTypes();
-    if (typesData) {
-      setDataTypesCount(typesData.length);
+    if (typesData && typesData.tables) {
+      setDataTypesCount(typesData.tables.length);
     }
 
     // Get sync tables from PostgreSQL
@@ -156,23 +148,10 @@ const DataSync = () => {
     }));
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    try {
-      return new Date(timestamp).toLocaleString();
-    } catch {
-      return 'Never';
-    }
-  };
 
   const getSyncStatusBadge = () => {
-    if (!syncStatus) return <Badge variant="secondary">Unknown</Badge>;
-    
-    if (syncStatus.isRunning) {
+    if (syncProgress.isActive) {
       return <Badge className="bg-blue-500">Running</Badge>;
-    }
-    
-    if (syncStatus.errors && syncStatus.errors.length > 0) {
-      return <Badge variant="destructive">Error</Badge>;
     }
     
     return <Badge className="bg-green-500">Idle</Badge>;
@@ -248,7 +227,7 @@ const DataSync = () => {
               <Skeleton className="h-4 w-32" />
             ) : (
               <p className="text-xs text-muted-foreground">
-                Last sync: {syncStatus ? formatTimestamp(syncStatus.lastSync) : 'Never'}
+                {syncProgress.isActive ? `Operation: ${syncProgress.operation}` : 'Ready for sync operations'}
               </p>
             )}
           </CardContent>

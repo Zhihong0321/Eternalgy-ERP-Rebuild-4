@@ -112,9 +112,7 @@ export const useEternalgyAPI = () => {
   // Alias for compatibility
   const analyzeDataStructure = getDataStructure;
 
-  // Sync operations
-  const triggerSync = () => handleRequest(() => api.post('/api/sync/trigger'));
-  const getSyncStatus = () => handleRequest<SyncStatus>(() => api.get('/api/sync/status'));
+  // Sync operations (removed non-existent endpoints that were triggering operations)
   
   // Enhanced sync operations with progress tracking
   const syncAllTables = async (globalLimit: number = 3) => {
@@ -186,8 +184,6 @@ export const useEternalgyAPI = () => {
     getData,
     getDataStructure,
     analyzeDataStructure,
-    triggerSync,
-    getSyncStatus,
     syncAllTables,
     syncTable,
     getSyncTables,

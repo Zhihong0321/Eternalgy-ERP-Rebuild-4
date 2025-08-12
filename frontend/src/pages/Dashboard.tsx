@@ -18,11 +18,11 @@ import { useEternalgyAPI } from '@/hooks/useEternalgyAPI';
 import type { DataType as APIDataType } from '@/hooks/useEternalgyAPI';
 
 const Dashboard = () => {
-  const { getDataTypes, getSyncStatus, checkHealth, loading, error } = useEternalgyAPI();
+  const { getDataTypes, checkHealth, loading, error } = useEternalgyAPI();
   const [dataTypes] = useState<APIDataType[]>([]);
 
   // Static design first - will connect to API later
-  console.log('API available:', { getDataTypes, getSyncStatus, checkHealth, loading, error, dataTypes });
+  console.log('API available:', { getDataTypes, checkHealth, loading, error, dataTypes });
 
   return (
     <div className="min-h-screen">
