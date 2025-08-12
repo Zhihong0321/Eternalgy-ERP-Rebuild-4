@@ -1,6 +1,9 @@
 import express from 'express';
+import { PrismaClient } from '@prisma/client';
 import SchemaCreationService from '../services/schemaCreationService.js';
 import { loggers } from '../utils/logger.js';
+
+const prisma = new PrismaClient();
 
 const router = express.Router();
 const schemaCreationService = new SchemaCreationService();
@@ -180,7 +183,7 @@ router.delete('/drop-all', async (req, res) => {
     // Drop each table
     for (const table of tablesToDrop) {
       try {
-        await schemaCreationService.prisma.$executeRawUnsafe(
+        await prisma.$executeRawUnsafe(
           `DROP TABLE IF EXISTS "${table.tablename}" CASCADE`
         );
         droppedCount++;
