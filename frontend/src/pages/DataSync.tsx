@@ -71,7 +71,7 @@ const DataSync = () => {
       
       // Initialize table limits with default value 3
       const initialLimits: Record<string, number> = {};
-      tablesData.tables.forEach(table => {
+      tablesData.tables.forEach((table: any) => {
         initialLimits[table.tablename] = tableLimits[table.tablename] || 3;
       });
       setTableLimits(initialLimits);

@@ -113,7 +113,7 @@ export const useEternalgyAPI = () => {
   const syncTable = (tableName: string, limit: number = 3) =>
     handleRequest(() => api.post(`/api/sync/table/${tableName}?limit=${limit}`));
   
-  const getSyncTables = () => handleRequest<{ tables: SyncTable[] }>(() => api.get('/api/sync/tables'));
+  const getSyncTables = () => handleRequest(() => api.get('/api/database/tables'));
   
   const wipeAllData = () => 
     handleRequest(() => api.delete('/api/schema/drop-all?confirm=yes-drop-all-tables'));
