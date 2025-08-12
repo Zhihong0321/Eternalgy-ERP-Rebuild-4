@@ -613,9 +613,8 @@ class SchemaCreationService {
         definition += ` DEFAULT ${field.defaultValue || 'NOW()'}`;
       }
       
-      if (!field.isNullable) {
-        definition += ' NOT NULL';
-      }
+      // REMOVED: NOT NULL constraints to prevent sync failures
+      // All fields are now nullable by default
       
       return definition;
     });
