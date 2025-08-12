@@ -844,6 +844,27 @@ class DataSyncService {
           } else if (typeof value === 'object' && value !== null) {
             // For PostgreSQL JSONB columns, pass as JSON string
             dbRecord[columnName] = JSON.stringify(value);
+          } else if (typeof value === 'string' && this.isDateString(value)) {
+            // CRITICAL FIX: Convert date strings to Date objects for TIMESTAMP columns
+            try {
+              dbRecord[columnName] = new Date(value);
+              this.logger.debug('Converted date string to Date object', runId, {
+                operation: 'date_conversion',
+                field: fieldName,
+                columnName: columnName,
+                originalValue: value,
+                convertedValue: dbRecord[columnName].toISOString()
+              });
+            } catch (dateError) {
+              this.logger.warn('Date conversion failed, using string', runId, {
+                operation: 'date_conversion_fallback',
+                field: fieldName,
+                columnName: columnName,
+                value: value,
+                error: dateError.message
+              });
+              dbRecord[columnName] = value;
+            }
           } else {
             dbRecord[columnName] = value;
           }
