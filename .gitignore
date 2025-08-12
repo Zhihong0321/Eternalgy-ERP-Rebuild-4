@@ -7,6 +7,8 @@ yarn-error.log*
 # Production builds
 dist/
 build/
+# Allow frontend dist for deployment (Option A fix)
+!frontend/dist/
 
 # Environment variables
 .env
