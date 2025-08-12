@@ -196,7 +196,11 @@ router.get('/data/:tableName', async (req, res) => {
       SELECT * FROM "${tableName}" 
       ${searchCondition}
       ORDER BY 
-        CASE WHEN "bubble_id" IS NOT NULL THEN "bubble_id" ELSE "id" END
+        CASE 
+          WHEN "bubble_id" IS NOT NULL THEN "bubble_id"::text
+          WHEN "id" IS NOT NULL THEN "id"::text
+          ELSE '0'
+        END
       LIMIT $${searchParams.length + 1} OFFSET $${searchParams.length + 2}
     `;
     const data = await prisma.$queryRawUnsafe(dataQuery, ...searchParams, limit, offset);
