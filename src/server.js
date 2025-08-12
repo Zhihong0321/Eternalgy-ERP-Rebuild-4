@@ -123,9 +123,12 @@ app.use('/api/database', databaseRoutes);
 
 // Catch-all handler: send back React's index.html file for any non-API routes
 app.get('*', (req, res) => {
-  // Don't serve index.html for API routes
-  if (req.path.startsWith('/api/') || req.path.startsWith('/health')) {
-    return res.status(404).json({ error: 'API endpoint not found' });
+  // Don't serve index.html for API routes, assets, or other static files
+  if (req.path.startsWith('/api/') || 
+      req.path.startsWith('/health') || 
+      req.path.startsWith('/assets/') ||
+      req.path.startsWith('/vite.svg')) {
+    return res.status(404).json({ error: 'Resource not found' });
   }
   
   // Serve React app for all other routes
