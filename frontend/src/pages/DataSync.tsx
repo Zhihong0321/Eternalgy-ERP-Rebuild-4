@@ -75,8 +75,8 @@ const DataSync = () => {
   useEffect(() => {
     fetchSyncData();
     
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchSyncData, 30000);
+    // FIXED: Reduced auto-refresh to every 5 minutes to prevent excessive API calls
+    const interval = setInterval(fetchSyncData, 300000); // 5 minutes
     return () => clearInterval(interval);
   }, []);
 
@@ -130,10 +130,9 @@ const DataSync = () => {
     setIsSyncing(prev => ({ ...prev, [tableName]: true }));
     
     try {
-      const result = await syncTable(tableName, limit);
-      if (result) {
-        setTimeout(fetchSyncData, 1000);
-      }
+      await syncTable(tableName, limit);
+      // FIXED: Don't refresh all tables after single table sync
+      // Single table sync should be isolated and not trigger database table scan
     } finally {
       setIsSyncing(prev => ({ ...prev, [tableName]: false }));
     }
