@@ -123,15 +123,18 @@ app.use('/api/database', databaseRoutes);
 
 // Catch-all handler: send back React's index.html file for any non-API routes
 app.get('*', (req, res) => {
-  // Don't serve index.html for API routes, assets, or other static files
-  if (req.path.startsWith('/api/') || 
-      req.path.startsWith('/health') || 
-      req.path.startsWith('/assets/') ||
-      req.path.startsWith('/vite.svg')) {
-    return res.status(404).json({ error: 'Resource not found' });
+  // Don't serve index.html for API routes
+  if (req.path.startsWith('/api/') || req.path.startsWith('/health')) {
+    return res.status(404).json({ error: 'API endpoint not found' });
   }
   
-  // Serve React app for all other routes
+  // Let static files be handled by express.static middleware first
+  // Only serve index.html for actual page routes (not file extensions)
+  if (req.path.includes('.') && !req.path.endsWith('.html')) {
+    return res.status(404).json({ error: 'Static file not found' });
+  }
+  
+  // Serve React app for page routes
   res.sendFile(path.join(frontendDistPath, 'index.html'));
 });
 
