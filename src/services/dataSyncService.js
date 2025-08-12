@@ -36,13 +36,7 @@ class DataSyncService {
     });
 
     try {
-      // Step 1: Validate table exists in discovered types
-      const validation = await this.validateTable(tableName, runId);
-      if (!validation.success) {
-        throw new Error(validation.error);
-      }
-
-      // Step 2: Fetch limited records from Bubble
+      // Step 1: Fetch limited records from Bubble DIRECTLY (no validation needed)
       const fetchResult = await this.fetchBubbleData(tableName, limit, runId);
       if (!fetchResult.success) {
         throw new Error(fetchResult.error);
@@ -68,10 +62,10 @@ class DataSyncService {
         };
       }
 
-      // Step 3: Process and sync records to database
+      // Step 2: Process and sync records to database
       const syncResult = await this.syncRecordsToDatabase(tableName, records, runId);
 
-      // Step 4: Complete sync logging
+      // Step 3: Complete sync logging
       const totalDuration = Date.now() - startTime;
       
       this.logger.info('Table sync completed', runId, {
