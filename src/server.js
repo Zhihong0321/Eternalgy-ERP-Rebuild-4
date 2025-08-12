@@ -3,6 +3,11 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,7 +18,9 @@ const PORT = process.env.PORT || 3000;
 app.set('trust proxy', 1);
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for frontend assets
+}));
 app.use(cors());
 app.use(express.json());
 
@@ -23,6 +30,10 @@ const limiter = rateLimit({
   max: 100, // limit each IP to 100 requests per windowMs
 });
 app.use(limiter);
+
+// Serve frontend static files
+const frontendDistPath = path.join(__dirname, '../frontend/dist');
+app.use(express.static(frontendDistPath));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -36,8 +47,8 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Basic info endpoint
-app.get('/', (req, res) => {
+// API info endpoint (moved to /api)
+app.get('/api', (req, res) => {
   res.json({
     name: 'Eternalgy ERP Rebuild 4',
     description: 'Bubble.io to PostgreSQL sync system',
@@ -108,8 +119,20 @@ app.use('/api/schema', schemaRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/logs', logsRoutes);
 
+// Catch-all handler: send back React's index.html file for any non-API routes
+app.get('*', (req, res) => {
+  // Don't serve index.html for API routes
+  if (req.path.startsWith('/api/') || req.path.startsWith('/health')) {
+    return res.status(404).json({ error: 'API endpoint not found' });
+  }
+  
+  // Serve React app for all other routes
+  res.sendFile(path.join(frontendDistPath, 'index.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🌐 Health check: http://localhost:${PORT}/health`);
+  console.log(`🎨 Frontend served from: ${frontendDistPath}`);
 });

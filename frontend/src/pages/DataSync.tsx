@@ -7,9 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import {
   Play,
-  Square,
   RefreshCw,
-  CheckCircle,
   AlertCircle,
   Database,
   Zap,
@@ -22,7 +20,6 @@ import type { SyncStatus, BubbleConnectionStatus, SyncTable } from '@/hooks/useE
 const DataSync = () => {
   const {
     getSyncStatus,
-    triggerSync,
     testBubbleConnection,
     getDataTypes,
     syncAllTables,

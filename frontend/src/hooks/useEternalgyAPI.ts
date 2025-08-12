@@ -69,21 +69,21 @@ export const useEternalgyAPI = () => {
   const checkHealth = () => handleRequest(() => api.get('/health'));
 
   // Data types
-  const getDataTypes = () => handleRequest<DataType[]>(() => api.get('/api/data-types'));
+  const getDataTypes = () => handleRequest<DataType[]>(() => api.get('/api/bubble/discover-types'));
 
   // Data fetching
   const getData = (dataType: string, params?: { page?: number; limit?: number; search?: string }) => {
     const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.search) queryParams.append('search', params.search);
+    // Note: Bubble API doesn't support pagination, so we ignore page param
     const queryString = queryParams.toString();
-    return handleRequest(() => api.get(`/api/data/${dataType}${queryString ? `?${queryString}` : ''}`));
+    return handleRequest(() => api.get(`/api/bubble/fetch/${dataType}${queryString ? `?${queryString}` : ''}`));
   };
 
   // Data structure analysis
   const getDataStructure = (dataType: string) => 
-    handleRequest(() => api.get(`/api/structure/${dataType}`));
+    handleRequest(() => api.get(`/api/bubble/analyze/${dataType}`));
     
   // Alias for compatibility
   const analyzeDataStructure = getDataStructure;
@@ -104,8 +104,8 @@ export const useEternalgyAPI = () => {
   const wipeAllData = () => 
     handleRequest(() => api.delete('/api/schema/drop-all?confirm=yes-drop-all-tables'));
 
-  // Bubble connection test
-  const testBubbleConnection = () => handleRequest(() => api.get('/api/bubble/test'));
+  // Bubble connection test  
+  const testBubbleConnection = () => handleRequest(() => api.get('/api/bubble/test-connection'));
 
   return {
     loading,
