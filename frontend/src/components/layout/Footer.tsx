@@ -2,7 +2,7 @@ import type { BuildInfo } from '@/types';
 
 const Footer = () => {
   const buildInfo: BuildInfo = {
-    timestamp: import.meta.env.VITE_BUILD_TIME || new Date().toISOString(),
+    timestamp: __BUILD_TIME__ || import.meta.env.VITE_BUILD_TIME || new Date().toISOString(),
     commit: import.meta.env.VITE_BUILD_COMMIT || 'dev',
     branch: import.meta.env.VITE_BUILD_BRANCH || 'main',
     version: import.meta.env.VITE_APP_VERSION || '1.0.0',
