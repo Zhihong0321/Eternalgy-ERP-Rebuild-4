@@ -396,7 +396,7 @@ class SchemaCreationService {
   analyzeFieldType(fieldName, value) {
     const fieldInfo = {
       sqlType: 'TEXT',
-      nullable: value === null || value === undefined,
+      nullable: true, // FIXED: Always allow NULL to prevent constraint violations during sync
       isRelationship: false,
       comment: null
     };
