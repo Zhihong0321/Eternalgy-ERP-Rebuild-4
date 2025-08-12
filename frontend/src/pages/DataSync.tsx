@@ -114,6 +114,7 @@ const DataSync = () => {
   };
 
   const handleCreateTables = async () => {
+    console.log('Create Tables button clicked!');
     const result = await createTables();
     if (result) {
       setTimeout(fetchSyncData, 2000);
@@ -289,7 +290,7 @@ const DataSync = () => {
       </div>
 
       {/* Sync Control */}
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -323,11 +324,11 @@ const DataSync = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card style={{backgroundColor: 'lightgreen', border: '3px solid red'}}>
           <CardHeader>
             <CardTitle className="flex items-center">
               <Database className="mr-2 h-5 w-5 text-green-500" />
-              Create Tables
+              🟢 CREATE TABLES BUTTON 🟢
             </CardTitle>
             <CardDescription>
               Create all tables from Bubble discovery (skip existing)
