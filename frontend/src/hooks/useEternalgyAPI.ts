@@ -172,6 +172,9 @@ export const useEternalgyAPI = () => {
   const wipeAllData = () => 
     handleRequest(() => api.delete('/api/schema/drop-all?confirm=yes-drop-all-tables'));
 
+  const createTables = () =>
+    handleRequest(() => api.post('/api/schema/create-tables'));
+
   // Bubble connection test  
   const testBubbleConnection = () => handleRequest(() => api.get('/api/bubble/test-connection'));
 
@@ -188,6 +191,7 @@ export const useEternalgyAPI = () => {
     syncTable,
     getSyncTables,
     wipeAllData,
+    createTables,
     testBubbleConnection,
     // Bubble.io specific methods
     getBubbleDataTypes,

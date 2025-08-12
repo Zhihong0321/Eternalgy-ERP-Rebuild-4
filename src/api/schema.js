@@ -14,52 +14,39 @@ const logger = loggers.api;
  * CREATE ALL TABLES FIRST before syncing data
  */
 
-// POST /api/schema/create-all - Create all tables from discovered types
-// ⚠️ DEPRECATED: Use /api/bubble/generate-schema instead for Prisma @map() approach
-router.post('/create-all', async (req, res) => {
+// POST /api/schema/create-tables - Create all tables from Bubble discovery (skip existing)
+router.post('/create-tables', async (req, res) => {
   const runId = logger.generateRunId();
   const startTime = Date.now();
   
-  // DEPRECATION WARNING
-  logger.warn('DEPRECATED ENDPOINT USED: /api/schema/create-all', runId, {
-    operation: 'deprecated_endpoint_warning',
-    endpoint: '/api/schema/create-all',
-    recommendation: 'Use /api/bubble/generate-schema for Prisma @map() approach'
+  logger.info('API request: Create tables from Bubble discovery', runId, {
+    operation: 'api_request',
+    endpoint: '/api/schema/create-tables'
   });
   
   // Parse options from query parameters
   const options = {
-    dropExisting: req.query.dropExisting === 'true',  // Default false
-    onlyWithData: req.query.onlyWithData !== 'false', // Default true
-    maxTables: req.query.maxTables ? parseInt(req.query.maxTables) : null,
-    sampleSize: req.query.sampleSize ? parseInt(req.query.sampleSize) : 5
+    dropExisting: false,  // Never drop existing - only create new tables
+    onlyWithData: true,   // Only create tables with data
+    maxTables: null,      // No limit - create all discovered tables
+    sampleSize: 5         // Sample size for schema analysis
   };
   
-  logger.info('API request: Create all database tables', runId, {
-    operation: 'api_request',
-    endpoint: '/api/schema/create-all',
-    options,
-    query: req.query
+  logger.info('Creating tables with fixed options', runId, {
+    operation: 'create_tables_start',
+    endpoint: '/api/schema/create-tables',
+    options
   });
 
   try {
-    // Validate options
-    if (options.maxTables && (options.maxTables < 1 || options.maxTables > 100)) {
-      throw new Error('Max tables must be between 1 and 100');
-    }
-
-    if (options.sampleSize && (options.sampleSize < 1 || options.sampleSize > 50)) {
-      throw new Error('Sample size must be between 1 and 50');
-    }
-
     // Execute schema creation
     const schemaResult = await schemaCreationService.createAllTables(options);
 
     const duration = Date.now() - startTime;
 
-    logger.info('API response: Schema creation completed', runId, {
+    logger.info('API response: Table creation completed', runId, {
       operation: 'api_response',
-      endpoint: '/api/schema/create-all',
+      endpoint: '/api/schema/create-tables',
       status: 200,
       discovered: schemaResult.tables.discovered,
       created: schemaResult.tables.created,
@@ -70,8 +57,7 @@ router.post('/create-all', async (req, res) => {
     res.json({
       success: true,
       runId,
-      endpoint: 'schema_create_all',
-      options,
+      endpoint: 'schema_create_tables',
       result: schemaResult,
       duration,
       timestamp: new Date().toISOString()
@@ -80,10 +66,9 @@ router.post('/create-all', async (req, res) => {
   } catch (error) {
     const duration = Date.now() - startTime;
     
-    logger.error('API error: Schema creation failed', runId, {
+    logger.error('API error: Table creation failed', runId, {
       operation: 'api_error',
-      endpoint: '/api/schema/create-all',
-      options,
+      endpoint: '/api/schema/create-tables',
       error: error.message,
       duration
     });
@@ -91,8 +76,7 @@ router.post('/create-all', async (req, res) => {
     res.status(500).json({
       success: false,
       runId,
-      endpoint: 'schema_create_all',
-      options,
+      endpoint: 'schema_create_tables',
       error: error.message,
       duration,
       timestamp: new Date().toISOString()

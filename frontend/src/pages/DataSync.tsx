@@ -25,6 +25,7 @@ const DataSync = () => {
     syncTable,
     getSyncTables,
     wipeAllData,
+    createTables,
     loading,
     error,
     syncProgress
@@ -107,6 +108,13 @@ const DataSync = () => {
     }
     
     const result = await wipeAllData();
+    if (result) {
+      setTimeout(fetchSyncData, 2000);
+    }
+  };
+
+  const handleCreateTables = async () => {
+    const result = await createTables();
     if (result) {
       setTimeout(fetchSyncData, 2000);
     }
@@ -281,7 +289,7 @@ const DataSync = () => {
       </div>
 
       {/* Sync Control */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -318,11 +326,43 @@ const DataSync = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Database className="mr-2 h-5 w-5 text-blue-500" />
-              Sync All Tables
+              <Database className="mr-2 h-5 w-5 text-green-500" />
+              Create Tables
             </CardTitle>
             <CardDescription>
-              Synchronize all tables from Bubble.io at once
+              Create all tables from Bubble discovery (skip existing)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="p-4 border border-green-200 rounded-lg bg-green-50">
+                <div className="space-y-2">
+                  <h3 className="font-medium text-green-900">📋 Table Creation</h3>
+                  <p className="text-sm text-green-700">
+                    Creates database tables from Bubble.io discovery. Existing tables are skipped.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={handleCreateTables}
+                disabled={loading}
+                className="w-full bg-green-600 hover:bg-green-700"
+              >
+                <Database className="mr-2 h-4 w-4" />
+                Create Tables
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Database className="mr-2 h-5 w-5 text-blue-500" />
+              Sync All Data
+            </CardTitle>
+            <CardDescription>
+              Sync data into existing PostgreSQL tables
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -347,12 +387,12 @@ const DataSync = () => {
                 {isSyncing['all'] || (syncProgress.isActive && syncProgress.operation === 'batch_sync') ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Syncing All Tables...
+                    Syncing All Data...
                   </>
                 ) : (
                   <>
                     <Play className="mr-2 h-4 w-4" />
-                    Sync All Tables
+                    Sync All Data
                   </>
                 )}
               </Button>
