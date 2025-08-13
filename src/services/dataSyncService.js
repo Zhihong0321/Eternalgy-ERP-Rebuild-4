@@ -754,15 +754,9 @@ class DataSyncService {
           
           // Handle different data types with proper PostgreSQL array/JSONB handling
           if (Array.isArray(value)) {
-            // Check if this looks like a Bubble ID relationship array
-            const isRelationshipArray = this.isRelationshipArray(value, fieldName);
-            if (isRelationshipArray) {
-              // For PostgreSQL TEXT[] columns, pass as array
-              dbRecord[columnName] = value;
-            } else {
-              // For PostgreSQL JSONB columns, pass as JavaScript object (Prisma handles conversion)
-              dbRecord[columnName] = value;
-            }
+            // SIMPLIFIED: Always treat arrays as JSONB since most Bubble arrays are complex data
+            // This avoids type mismatch errors between TEXT[] and JSONB columns
+            dbRecord[columnName] = value;
           } else if (typeof value === 'object' && value !== null) {
             // For PostgreSQL JSONB columns, pass as JavaScript object (Prisma handles conversion)
             dbRecord[columnName] = value;
