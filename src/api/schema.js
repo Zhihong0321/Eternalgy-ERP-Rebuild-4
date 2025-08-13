@@ -334,7 +334,7 @@ router.post('/recreate-table/:tableName', async (req, res) => {
     }
 
     // Find the specific table
-    const tableInfo = discoveryResult.dataTypes.find(dt => 
+    const tableInfo = discoveryResult.tables.find(dt => 
       dt.name.toLowerCase() === tableName.toLowerCase()
     );
 
