@@ -326,44 +326,38 @@ router.post('/recreate-table/:tableName', async (req, res) => {
   });
 
   try {
-    // Step 1: Drop the existing table if it exists
-    const safeTableName = tableName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    // First discover all tables to find the exact table info
+    const discoveryResult = await schemaCreationService.discoverAllDataTypes(runId);
     
-    try {
-      await prisma.$queryRawUnsafe(`DROP TABLE IF EXISTS "${safeTableName}" CASCADE`);
-      logger.info('Table dropped successfully', runId, {
-        operation: 'table_drop_success',
-        tableName: safeTableName
-      });
-    } catch (dropError) {
-      logger.warn('Table drop failed (might not exist)', runId, {
-        operation: 'table_drop_warning',
-        tableName: safeTableName,
-        error: dropError.message
-      });
+    if (!discoveryResult.success) {
+      throw new Error('Failed to discover data types: ' + discoveryResult.error);
     }
 
-    // Step 2: Recreate the table with current Bubble schema
-    // Use the BubbleService to get data for just this table, then create schema
-    const bubbleService = schemaCreationService.bubbleService;
-    
-    logger.info('Fetching Bubble data for table recreation', runId, {
-      operation: 'bubble_data_fetch',
-      tableName
+    // Find the specific table
+    const tableInfo = discoveryResult.dataTypes.find(dt => 
+      dt.name.toLowerCase() === tableName.toLowerCase()
+    );
+
+    if (!tableInfo) {
+      throw new Error(`Table '${tableName}' not found in Bubble.io data types`);
+    }
+
+    logger.info('Found table in discovery results', runId, {
+      operation: 'table_found',
+      tableName,
+      recordCount: tableInfo.recordCount
     });
 
-    // Get sample data from Bubble for this specific table
-    const bubbleData = await bubbleService.fetchDataType(tableName, 5);
-    if (!bubbleData.success || !bubbleData.records || bubbleData.records.length === 0) {
-      throw new Error(`No data found for table '${tableName}' in Bubble.io - cannot recreate schema`);
-    }
-
-    // Analyze the structure and create the table
-    const tableSchema = await schemaCreationService.analyzeTableStructure(tableName, bubbleData.records);
-    const createResult = await schemaCreationService.createSingleTable(tableName, tableSchema);
+    // Use createSingleTable with dropExisting=true to recreate the table
+    const createResult = await schemaCreationService.createSingleTable(
+      tableInfo, 
+      5, // sampleSize
+      true, // dropExisting - this will drop and recreate
+      runId
+    );
 
     if (!createResult.success) {
-      throw new Error(createResult.error || 'Table creation failed');
+      throw new Error(createResult.error || 'Table recreation failed');
     }
 
     const duration = Date.now() - startTime;
