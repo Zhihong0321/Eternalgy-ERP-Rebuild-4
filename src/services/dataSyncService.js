@@ -754,9 +754,22 @@ class DataSyncService {
           
           // Handle different data types with proper PostgreSQL array/JSONB handling
           if (Array.isArray(value)) {
-            // SIMPLIFIED: Always treat arrays as JSONB since most Bubble arrays are complex data
-            // This avoids type mismatch errors between TEXT[] and JSONB columns
-            dbRecord[columnName] = value;
+            // Check if this looks like a Bubble ID relationship array
+            const isRelationshipArray = this.isRelationshipArray(value, fieldName);
+            if (isRelationshipArray) {
+              // For foreign key relationships, check if column is TEXT[] or JSONB
+              const columnType = await this.getColumnType(safeTableName, columnName, runId);
+              if (columnType && columnType.includes('text[]')) {
+                // For PostgreSQL TEXT[] columns, pass as array
+                dbRecord[columnName] = value;
+              } else {
+                // For PostgreSQL JSONB columns, pass as JavaScript object
+                dbRecord[columnName] = value;
+              }
+            } else {
+              // For complex data arrays, always use JSONB format
+              dbRecord[columnName] = value;
+            }
           } else if (typeof value === 'object' && value !== null) {
             // For PostgreSQL JSONB columns, pass as JavaScript object (Prisma handles conversion)
             dbRecord[columnName] = value;
@@ -990,6 +1003,53 @@ class DataSyncService {
         success: false,
         error: error.message
       };
+    }
+  }
+
+  /**
+   * Get PostgreSQL column type for a specific column
+   * @param {string} tableName - Database table name
+   * @param {string} columnName - Column name to check
+   * @param {string} runId - Run ID for logging
+   * @returns {Promise<string>} Column data type
+   */
+  async getColumnType(tableName, columnName, runId) {
+    try {
+      const result = await this.prisma.$queryRawUnsafe(`
+        SELECT data_type, udt_name
+        FROM information_schema.columns
+        WHERE table_name = $1 AND column_name = $2 AND table_schema = 'public'
+      `, tableName, columnName);
+
+      if (result.length > 0) {
+        const columnType = result[0].data_type;
+        const udtName = result[0].udt_name;
+        
+        // Handle array types
+        if (columnType === 'ARRAY') {
+          return `${udtName}[]`;
+        }
+        
+        this.logger.debug('Column type detected', runId, {
+          operation: 'column_type_detection',
+          table: tableName,
+          column: columnName,
+          type: columnType,
+          udtName: udtName
+        });
+
+        return columnType.toLowerCase();
+      }
+      
+      return null;
+    } catch (error) {
+      this.logger.warn('Failed to get column type', runId, {
+        operation: 'column_type_detection_error',
+        table: tableName,
+        column: columnName,
+        error: error.message
+      });
+      return null;
     }
   }
 
