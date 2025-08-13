@@ -175,6 +175,9 @@ export const useEternalgyAPI = () => {
   const createTables = () =>
     handleRequest(() => api.post('/api/schema/create-tables'));
 
+  const recreateTable = (tableName: string) =>
+    handleRequest(() => api.post(`/api/schema/recreate-table/${tableName}`));
+
   // Bubble connection test  
   const testBubbleConnection = () => handleRequest(() => api.get('/api/bubble/test-connection'));
 
@@ -192,6 +195,7 @@ export const useEternalgyAPI = () => {
     getSyncTables,
     wipeAllData,
     createTables,
+    recreateTable,
     testBubbleConnection,
     // Bubble.io specific methods
     getBubbleDataTypes,

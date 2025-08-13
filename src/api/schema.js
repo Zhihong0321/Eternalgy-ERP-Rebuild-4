@@ -313,4 +313,102 @@ router.post('/recreate-all', async (req, res) => {
   }
 });
 
+// POST /api/schema/recreate-table/:tableName - Drop and recreate a single table
+router.post('/recreate-table/:tableName', async (req, res) => {
+  const runId = logger.generateRunId();
+  const startTime = Date.now();
+  const { tableName } = req.params;
+  
+  logger.info('API request: Recreate single table', runId, {
+    operation: 'api_request',
+    endpoint: '/api/schema/recreate-table/:tableName',
+    tableName
+  });
+
+  try {
+    // Step 1: Drop the existing table if it exists
+    const safeTableName = tableName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    
+    try {
+      await prisma.$queryRawUnsafe(`DROP TABLE IF EXISTS "${safeTableName}" CASCADE`);
+      logger.info('Table dropped successfully', runId, {
+        operation: 'table_drop_success',
+        tableName: safeTableName
+      });
+    } catch (dropError) {
+      logger.warn('Table drop failed (might not exist)', runId, {
+        operation: 'table_drop_warning',
+        tableName: safeTableName,
+        error: dropError.message
+      });
+    }
+
+    // Step 2: Recreate the table with current Bubble schema
+    // Use the BubbleService to get data for just this table, then create schema
+    const bubbleService = schemaCreationService.bubbleService;
+    
+    logger.info('Fetching Bubble data for table recreation', runId, {
+      operation: 'bubble_data_fetch',
+      tableName
+    });
+
+    // Get sample data from Bubble for this specific table
+    const bubbleData = await bubbleService.fetchDataType(tableName, 5);
+    if (!bubbleData.success || !bubbleData.records || bubbleData.records.length === 0) {
+      throw new Error(`No data found for table '${tableName}' in Bubble.io - cannot recreate schema`);
+    }
+
+    // Analyze the structure and create the table
+    const tableSchema = await schemaCreationService.analyzeTableStructure(tableName, bubbleData.records);
+    const createResult = await schemaCreationService.createSingleTable(tableName, tableSchema);
+
+    if (!createResult.success) {
+      throw new Error(createResult.error || 'Table creation failed');
+    }
+
+    const duration = Date.now() - startTime;
+
+    logger.info('API response: Single table recreated', runId, {
+      operation: 'api_response',
+      endpoint: '/api/schema/recreate-table/:tableName',
+      status: 200,
+      tableName,
+      created: createResult.created,
+      duration
+    });
+
+    res.json({
+      success: true,
+      runId,
+      endpoint: 'schema_recreate_table',
+      tableName,
+      created: createResult.created,
+      message: `Table '${tableName}' recreated successfully with updated schema`,
+      duration,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    
+    logger.error('API error: Single table recreation failed', runId, {
+      operation: 'api_error',
+      endpoint: '/api/schema/recreate-table/:tableName',
+      tableName,
+      error: error.message,
+      duration
+    });
+
+    res.status(500).json({
+      success: false,
+      runId,
+      endpoint: 'schema_recreate_table',
+      tableName,
+      error: error.message,
+      duration,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 export default router;

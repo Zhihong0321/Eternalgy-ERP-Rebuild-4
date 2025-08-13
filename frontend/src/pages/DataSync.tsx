@@ -13,6 +13,7 @@ import {
   Zap,
   Trash2,
   Settings,
+  RotateCcw,
 } from 'lucide-react';
 import { useEternalgyAPI } from '@/hooks/useEternalgyAPI';
 import type { BubbleConnectionStatus, SyncTable } from '@/hooks/useEternalgyAPI';
@@ -26,6 +27,7 @@ const DataSync = () => {
     getSyncTables,
     wipeAllData,
     createTables,
+    recreateTable,
     loading,
     error,
     syncProgress
@@ -143,6 +145,23 @@ const DataSync = () => {
       // Single table sync should be isolated and not trigger database table scan
     } finally {
       setIsSyncing(prev => ({ ...prev, [tableName]: false }));
+    }
+  };
+
+  const handleRecreateTable = async (tableName: string) => {
+    const confirmRecreate = confirm(
+      `Are you sure you want to RECREATE table "${tableName}"?\n\nThis will:\n1. Drop the existing table and all its data\n2. Recreate the table with current Bubble schema\n\nThis action cannot be undone.`
+    );
+    
+    if (!confirmRecreate) return;
+    
+    setIsSyncing(prev => ({ ...prev, [`recreate_${tableName}`]: true }));
+    
+    try {
+      await recreateTable(tableName);
+      setTimeout(fetchSyncData, 2000); // Refresh to show updated table
+    } finally {
+      setIsSyncing(prev => ({ ...prev, [`recreate_${tableName}`]: false }));
     }
   };
 
@@ -456,11 +475,11 @@ const DataSync = () => {
                       className="w-16 text-center"
                       min="1"
                       max="99999"
-                      disabled={isSyncing[table.tablename]}
+                      disabled={isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`]}
                     />
                     <Button
                       onClick={() => handleSyncTable(table.tablename)}
-                      disabled={loading || isSyncing[table.tablename] || syncProgress.isActive}
+                      disabled={loading || isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || syncProgress.isActive}
                       size="sm"
                       className="w-20"
                     >
@@ -470,6 +489,22 @@ const DataSync = () => {
                         <>
                           <Play className="mr-1 h-3 w-3" />
                           SYNC
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={() => handleRecreateTable(table.tablename)}
+                      disabled={loading || isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || syncProgress.isActive}
+                      size="sm"
+                      variant="outline"
+                      className="w-24 border-orange-200 text-orange-600 hover:bg-orange-50"
+                    >
+                      {isSyncing[`recreate_${table.tablename}`] ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <RotateCcw className="mr-1 h-3 w-3" />
+                          RECREATE
                         </>
                       )}
                     </Button>
