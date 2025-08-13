@@ -745,7 +745,7 @@ class DataSyncService {
       dbRecord['bubble_id'] = bubbleId;
 
       // Add all other fields using adaptive mapping
-      Object.keys(bubbleRecord).forEach(fieldName => {
+      for (const fieldName of Object.keys(bubbleRecord)) {
         if (fieldName !== '_id') {
           const value = bubbleRecord[fieldName];
           
@@ -798,7 +798,7 @@ class DataSyncService {
             dbRecord[columnName] = value;
           }
         }
-      });
+      }
 
       this.logger.debug('Built database record with adaptive field mapping', runId, {
         operation: 'adaptive_record_build',
