@@ -235,7 +235,7 @@ const DataBrowser = () => {
                 <Input
                   placeholder="Search records..."
                   value={searchTerm}
-                  onChange={(e) => handleSearch(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSearch(e.target.value)}
                   className="pl-10"
                 />
               </div>
@@ -348,7 +348,7 @@ const DataBrowser = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      {tableData.columns.map((column) => (
+                      {tableData.columns.map((column: any) => (
                         <TableHead key={column.key} className="whitespace-nowrap">
                           {column.label}
                         </TableHead>
@@ -357,9 +357,9 @@ const DataBrowser = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tableData.data.map((row, index) => (
+                    {tableData.data.map((row: any, index: number) => (
                       <TableRow key={index}>
-                        {tableData.columns.map((column) => (
+                        {tableData.columns.map((column: any) => (
                           <TableCell key={column.key} className="max-w-xs">
                             {renderTableCell(row[column.key])}
                           </TableCell>
