@@ -42,7 +42,7 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     service: 'Eternalgy ERP Rebuild 4',
     environment: process.env.NODE_ENV || 'development',
-    deploymentTime: '2025-08-13T07:28:00Z',
+    deploymentTime: '2025-08-13T07:57:00Z',
     syncServicesEnabled: true
   });
 });
