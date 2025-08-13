@@ -756,6 +756,19 @@ class DataSyncService {
           if (Array.isArray(value)) {
             // Check if this looks like a Bubble ID relationship array
             const isRelationshipArray = this.isRelationshipArray(value, fieldName);
+            
+            // DEBUG: Log the detection result for access_level specifically
+            if (fieldName === 'Access Level') {
+              this.logger.info('DEBUG: Access Level array detection', runId, {
+                operation: 'access_level_debug',
+                fieldName: fieldName,
+                columnName: columnName,
+                isRelationshipArray: isRelationshipArray,
+                sampleValues: value.slice(0, 3),
+                arrayLength: value.length
+              });
+            }
+            
             if (isRelationshipArray) {
               // For foreign key relationships, check if column is TEXT[] or JSONB
               const columnType = await this.getColumnType(safeTableName, columnName, runId);
