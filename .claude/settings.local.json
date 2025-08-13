@@ -9,7 +9,9 @@
       "Bash(git commit:*)",
       "Bash(curl*)",
       "Bash(curl:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npm run deploy:*)",
+      "Bash(npm install)"
     ],
     "deny": [],
     "ask": []

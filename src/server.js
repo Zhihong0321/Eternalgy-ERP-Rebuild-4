@@ -81,6 +81,16 @@ app.get('/api', (req, res) => {
         byContext: '/api/logs/context/{context}?limit=100',
         stats: '/api/logs/stats',
         health: '/api/logs/health'
+      },
+      documentation: {
+        schema: '/api/docs/schema',
+        tableSchema: '/api/docs/schema/{tableName}',
+        tables: '/api/docs/tables',
+        descriptions: '/api/docs/descriptions/{tableName}',
+        saveDescriptions: 'POST /api/docs/descriptions/{tableName}',
+        documentedTables: '/api/docs/documented-tables',
+        export: '/api/docs/export',
+        deleteDescriptions: 'DELETE /api/docs/descriptions/{tableName}'
       }
     },
     status: {
@@ -114,12 +124,14 @@ import syncRoutes from './api/sync.js';
 import logsRoutes from './api/logs.js';
 import schemaRoutes from './api/schema.js';
 import databaseRoutes from './api/database.js';
+import documentationRoutes from './api/documentation.js';
 
 app.use('/api/bubble', bubbleRoutes);
 app.use('/api/schema', schemaRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/database', databaseRoutes);
+app.use('/api/docs', documentationRoutes);
 
 // Catch-all handler: send back React's index.html file for any non-API routes
 app.get('*', (req, res) => {
