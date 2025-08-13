@@ -760,12 +760,12 @@ class DataSyncService {
               // For PostgreSQL TEXT[] columns, pass as array
               dbRecord[columnName] = value;
             } else {
-              // For PostgreSQL JSONB columns, pass as JSON string
-              dbRecord[columnName] = JSON.stringify(value);
+              // For PostgreSQL JSONB columns, pass as JavaScript object (Prisma handles conversion)
+              dbRecord[columnName] = value;
             }
           } else if (typeof value === 'object' && value !== null) {
-            // For PostgreSQL JSONB columns, pass as JSON string
-            dbRecord[columnName] = JSON.stringify(value);
+            // For PostgreSQL JSONB columns, pass as JavaScript object (Prisma handles conversion)
+            dbRecord[columnName] = value;
           } else if (typeof value === 'string' && this.isDateString(value)) {
             // CRITICAL FIX: Convert date strings to Date objects for TIMESTAMP columns
             try {
