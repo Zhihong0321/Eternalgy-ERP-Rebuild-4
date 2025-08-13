@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { loggers } from '../utils/logger.js';
 
-const logger = loggers.service;
+const logger = loggers.database;
 
 class DatabaseIntrospectionService {
   constructor() {
