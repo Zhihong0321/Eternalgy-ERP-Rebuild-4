@@ -21,6 +21,7 @@ import {
   Calendar,
   UserCheck,
   Briefcase,
+  BookOpen,
 } from 'lucide-react';
 import type { NavigationItem } from '@/types/index';
 
@@ -90,6 +91,12 @@ const dataManagementItems: NavigationItem[] = [
     label: 'Data Browser',
     icon: Search,
     href: '/data-browser',
+  },
+  {
+    id: 'schema-description',
+    label: 'Schema Description',
+    icon: BookOpen,
+    href: '/schema-description',
   },
   {
     id: 'system-status',

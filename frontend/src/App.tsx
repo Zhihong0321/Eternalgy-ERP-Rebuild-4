@@ -4,6 +4,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import Dashboard from '@/pages/Dashboard';
 import DataSync from '@/pages/DataSync';
 import DataBrowser from '@/pages/DataBrowser';
+import SchemaDescription from '@/pages/SchemaDescription';
 import './App.css';
 
 // Create a client
@@ -41,6 +42,7 @@ function App() {
             {/* Data Management */}
             <Route path="data-sync" element={<DataSync />} />
             <Route path="data-browser" element={<DataBrowser />} />
+            <Route path="schema-description" element={<SchemaDescription />} />
             <Route path="system-status" element={<PlaceholderPage title="System Status" />} />
             
             {/* Sales Module */}
