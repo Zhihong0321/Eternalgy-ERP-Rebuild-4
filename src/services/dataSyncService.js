@@ -944,22 +944,33 @@ class DataSyncService {
       }
     }
 
-    // Method 3: Final check for arrays that might be relationships
-    // If all elements are strings and longer than 20 chars, might be IDs
-    const allStringsLongEnough = array.every(element => 
-      typeof element === 'string' && element.length > 20
-    );
+    // Method 3: STRICT check for arrays that might be relationships
+    // ONLY consider it a relationship if ALL elements match strict Bubble ID format
+    const allElementsStrictBubbleIds = array.every(element => {
+      if (typeof element !== 'string') return false;
+      
+      // STRICT Bubble ID pattern: must have 'x' separator and proper digit lengths
+      // Based on your hint: FIX Format, FIX Length
+      const strictBubbleIdPattern = /^\d{13,15}x\d{15,20}$/;
+      return strictBubbleIdPattern.test(element);
+    });
 
-    if (allStringsLongEnough && array.length > 0) {
-      this.logger?.debug?.('Potential relationship array - long string IDs', null, {
+    if (allElementsStrictBubbleIds) {
+      this.logger?.debug?.('Detected relationship array - strict Bubble ID format', null, {
         field: fieldName,
         sampleIds: array.slice(0, 2),
         count: array.length
       });
-      // Return true if this looks like IDs, but log for verification
       return true;
     }
 
+    // If we reach here, it's likely a "list of text" - treat as JSONB
+    this.logger?.debug?.('Detected text array - not relationships', null, {
+      field: fieldName,
+      sampleValues: array.slice(0, 2),
+      count: array.length
+    });
+    
     return false;
   }
 
