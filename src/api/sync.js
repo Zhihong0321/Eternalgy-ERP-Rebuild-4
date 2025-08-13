@@ -31,8 +31,8 @@ router.post('/table/:tableName', async (req, res) => {
 
   try {
     // Validate limit (reasonable bounds)
-    if (limit < 1 || limit > 100) {
-      throw new Error('Limit must be between 1 and 100');
+    if (limit < 1 || limit > 99999) {
+      throw new Error('Limit must be between 1 and 99999');
     }
 
     // Execute table sync
@@ -113,8 +113,8 @@ router.post('/batch', async (req, res) => {
 
   try {
     // Validate global limit
-    if (globalLimit < 1 || globalLimit > 100) {
-      throw new Error('Global limit must be between 1 and 100');
+    if (globalLimit < 1 || globalLimit > 99999) {
+      throw new Error('Global limit must be between 1 and 99999');
     }
 
     // Validate maxTables if specified

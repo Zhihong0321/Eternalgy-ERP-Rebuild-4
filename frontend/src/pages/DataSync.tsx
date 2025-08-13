@@ -114,7 +114,6 @@ const DataSync = () => {
   };
 
   const handleCreateTables = async () => {
-    console.log('Create Tables button clicked!');
     const result = await createTables();
     if (result) {
       setTimeout(fetchSyncData, 2000);
@@ -150,7 +149,7 @@ const DataSync = () => {
   const updateTableLimit = (tableName: string, limit: number) => {
     setTableLimits(prev => ({
       ...prev,
-      [tableName]: Math.max(1, Math.min(100, limit))
+      [tableName]: Math.max(1, Math.min(99999, limit))
     }));
   };
 
@@ -324,11 +323,11 @@ const DataSync = () => {
           </CardContent>
         </Card>
 
-        <Card style={{backgroundColor: 'lightgreen', border: '3px solid red'}}>
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
               <Database className="mr-2 h-5 w-5 text-green-500" />
-              🟢 CREATE TABLES BUTTON 🟢
+              Create Tables
             </CardTitle>
             <CardDescription>
               Create all tables from Bubble discovery (skip existing)
@@ -373,10 +372,10 @@ const DataSync = () => {
                 <Input
                   type="number"
                   value={syncAllLimit}
-                  onChange={(e) => setSyncAllLimit(Math.max(1, Math.min(100, parseInt(e.target.value) || 3)))}
+                  onChange={(e) => setSyncAllLimit(Math.max(1, Math.min(99999, parseInt(e.target.value) || 3)))}
                   className="w-20"
                   min="1"
-                  max="100"
+                  max="99999"
                 />
                 <span className="text-sm text-muted-foreground">records per table</span>
               </div>
@@ -456,7 +455,7 @@ const DataSync = () => {
                       onChange={(e) => updateTableLimit(table.tablename, parseInt(e.target.value) || 3)}
                       className="w-16 text-center"
                       min="1"
-                      max="100"
+                      max="99999"
                       disabled={isSyncing[table.tablename]}
                     />
                     <Button
