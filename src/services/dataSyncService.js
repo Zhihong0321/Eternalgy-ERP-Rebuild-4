@@ -196,68 +196,90 @@ class DataSyncService {
         estimatedPages: totalPages
       });
 
-      // Implement pagination to handle Bubble.io's 100-record limit
-      this.logger.info('Starting paginated fetch', runId, {
-        operation: 'manual_pagination_start',
+      // Implement loop-based pagination to handle unlimited records
+      this.logger.info('Starting paginated fetch with unlimited pagination', runId, {
+        operation: 'unlimited_pagination_start',
         table: tableName,
         targetLimit: limit,
+        estimatedPages: Math.ceil(limit / 100),
         timestamp: new Date().toISOString()
       });
 
-      // First call - get up to 100 records  
-      const firstCall = await this.bubbleService.fetchDataType(tableName, {
-        limit: 100,
-        cursor: 0,
-        includeEmpty: false
-      });
-
-      if (!firstCall.success) {
-        throw new Error(firstCall.error || 'First API call failed');
-      }
-
-      const firstRecords = firstCall.records || [];
-      allRecords.push(...firstRecords);
-      totalFetched = firstRecords.length;
-      
-      this.logger.info('First call completed', runId, {
-        operation: 'manual_first_call',
-        recordsReceived: firstRecords.length,
-        totalFetched,
-        hasMore: firstCall.pagination?.hasMore,
-        remaining: firstCall.pagination?.remaining
-      });
-
-      // Second call - ALWAYS attempt if we need more records
-      const needsSecondCall = totalFetched < limit;
-      const bubbleHasMore = firstCall.pagination?.hasMore === true;
-      const remainingCount = firstCall.pagination?.remaining || 0;
-      
-      if (needsSecondCall) {
-        this.logger.info('Making additional API call for remaining records', runId, {
-          operation: 'manual_second_call_start',
-          cursor: 100,
-          remainingNeeded: limit - totalFetched,
-          bubbleHasMore,
-          remainingFromBubble: remainingCount
+      // Loop through all pages until we have enough records or no more data
+      while (totalFetched < limit) {
+        const remainingNeeded = limit - totalFetched;
+        const pageSize = Math.min(100, remainingNeeded); // Bubble limit is 100 per call
+        
+        this.logger.info(`Making API call ${pageNumber}`, runId, {
+          operation: 'pagination_call',
+          pageNumber,
+          cursor: currentCursor,
+          pageSize,
+          totalFetched,
+          remainingNeeded
         });
 
-        const secondCall = await this.bubbleService.fetchDataType(tableName, {
-          limit: limit - totalFetched,  // Request exactly what we still need
-          cursor: 100,
+        const pageCall = await this.bubbleService.fetchDataType(tableName, {
+          limit: pageSize,
+          cursor: currentCursor,
           includeEmpty: false
         });
 
-        if (secondCall.success) {
-          const secondRecords = secondCall.records || [];
-          allRecords.push(...secondRecords);
-          totalFetched += secondRecords.length;
-          
-          this.logger.info('Additional API call completed', runId, {
-            operation: 'manual_second_call',
-            recordsReceived: secondRecords.length,
-            totalFetched,
-            finalTotal: totalFetched
+        if (!pageCall.success) {
+          this.logger.warn(`API call ${pageNumber} failed, stopping pagination`, runId, {
+            operation: 'pagination_call_failed',
+            pageNumber,
+            cursor: currentCursor,
+            error: pageCall.error
           });
+          break;
+        }
+
+        const pageRecords = pageCall.records || [];
+        allRecords.push(...pageRecords);
+        totalFetched += pageRecords.length;
+        
+        this.logger.info(`API call ${pageNumber} completed`, runId, {
+          operation: 'pagination_call_success',
+          pageNumber,
+          recordsReceived: pageRecords.length,
+          totalFetched,
+          hasMore: pageCall.pagination?.hasMore,
+          remaining: pageCall.pagination?.remaining
+        });
+
+        // Stop if we got fewer records than requested (no more data available)
+        if (pageRecords.length < pageSize) {
+          this.logger.info('Received fewer records than requested - no more data available', runId, {
+            operation: 'pagination_complete_no_more_data',
+            requested: pageSize,
+            received: pageRecords.length,
+            totalPages: pageNumber
+          });
+          break;
+        }
+
+        // Stop if Bubble API indicates no more data
+        if (pageCall.pagination?.hasMore === false) {
+          this.logger.info('Bubble API indicates no more data available', runId, {
+            operation: 'pagination_complete_api_signal',
+            totalPages: pageNumber
+          });
+          break;
+        }
+
+        // Prepare for next iteration
+        currentCursor += pageSize;
+        pageNumber++;
+
+        // Safety limit to prevent infinite loops (max 1000 pages = 100,000 records)
+        if (pageNumber > 1000) {
+          this.logger.warn('Reached safety limit of 1000 API calls, stopping pagination', runId, {
+            operation: 'pagination_safety_limit',
+            totalPages: pageNumber,
+            totalFetched
+          });
+          break;
         }
       }
       
