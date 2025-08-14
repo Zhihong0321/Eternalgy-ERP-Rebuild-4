@@ -526,8 +526,12 @@ router.post('/discover/:tableName', async (req, res) => {
     // Execute relationship discovery for the table
     const discoveryResult = await relationshipDiscoveryService.discoverTableRelationships(tableName, runId);
 
+    if (!discoveryResult) {
+      throw new Error('Discovery service returned null or undefined result');
+    }
+
     if (!discoveryResult.success) {
-      throw new Error(discoveryResult.error);
+      throw new Error(discoveryResult.error || 'Discovery failed with unknown error');
     }
 
     const duration = Date.now() - startTime;
