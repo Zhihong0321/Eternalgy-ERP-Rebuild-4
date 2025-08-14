@@ -20,6 +20,84 @@ try {
 }
 
 /**
+ * Manually add specific fields to a table (for ultra-sparse fields)
+ * POST /api/schema-patch/manual-add-fields/{tableName}
+ * 
+ * Usage: When automated discovery can't find ultra-sparse fields
+ * Body: { "fields": [{"name": "field_name", "type": "DECIMAL"}] }
+ */
+router.post('/manual-add-fields/:tableName', async (req, res) => {
+  const { tableName } = req.params;
+  const { fields } = req.body;
+
+  try {
+    if (!patchService) {
+      return res.status(500).json({
+        success: false,
+        error: 'SchemaPatchService not initialized'
+      });
+    }
+
+    if (!fields || !Array.isArray(fields) || fields.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Body must contain "fields" array with field specifications',
+        example: {
+          fields: [
+            { name: "achieved_tier_bonus__", type: "DECIMAL" },
+            { name: "all_full_on_date", type: "TIMESTAMPTZ" }
+          ]
+        }
+      });
+    }
+
+    const safeTableName = tableName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const fieldsAdded = [];
+    const sqlExecuted = [];
+
+    // Execute manual column additions
+    for (const field of fields) {
+      const sql = `ALTER TABLE "${safeTableName}" ADD COLUMN IF NOT EXISTS "${field.name}" ${field.type}`;
+      
+      try {
+        const { PrismaClient } = await import('@prisma/client');
+        const prisma = new PrismaClient();
+        await prisma.$executeRawUnsafe(sql);
+        await prisma.$disconnect();
+        fieldsAdded.push(field);
+        sqlExecuted.push(sql);
+      } catch (error) {
+        return res.status(500).json({
+          success: false,
+          error: `Failed to add column ${field.name}: ${error.message}`,
+          sqlAttempted: sql
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      table: tableName,
+      fieldsAdded,
+      sqlExecuted,
+      message: `Successfully added ${fieldsAdded.length} fields manually`,
+      endpoint: 'schema_patch_manual_add_fields',
+      nextSteps: [`Try your sync again: POST /api/sync/table/${tableName}?limit=100`]
+    });
+
+  } catch (error) {
+    console.error('Manual add fields error:', error);
+    res.status(500).json({
+      success: false,
+      endpoint: 'schema_patch_manual_add_fields',
+      table: tableName,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
  * Patch missing fields for a specific table
  * POST /api/schema-patch/fix-missing-fields/{tableName}
  * 
