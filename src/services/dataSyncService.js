@@ -169,46 +169,128 @@ class DataSyncService {
   }
 
   /**
-   * Fetch data from Bubble with specified limit
+   * Fetch data from Bubble with specified limit using pagination
+   * Handles Bubble's 100-record limit by making multiple API calls
    */
   async fetchBubbleData(tableName, limit, runId) {
-    this.logger.info('Fetching data from Bubble', runId, {
+    this.logger.info('Fetching data from Bubble with pagination', runId, {
       operation: 'bubble_fetch_start',
       table: tableName,
-      limit
+      limit,
+      maxPerPage: 100
     });
 
     try {
-      const fetchResult = await this.bubbleService.fetchDataType(tableName, {
-        limit,
+      const allRecords = [];
+      let currentCursor = 0;
+      let totalFetched = 0;
+      let pageNumber = 1;
+      
+      // Calculate how many API calls we need
+      const totalPages = Math.ceil(limit / 100);
+      
+      this.logger.info('Starting paginated fetch', runId, {
+        operation: 'pagination_plan',
+        table: tableName,
+        totalLimit: limit,
+        estimatedPages: totalPages
+      });
+
+      // Implement pagination to handle Bubble.io's 100-record limit
+      this.logger.info('Starting paginated fetch', runId, {
+        operation: 'manual_pagination_start',
+        table: tableName,
+        targetLimit: limit,
+        timestamp: new Date().toISOString()
+      });
+
+      // First call - get up to 100 records  
+      const firstCall = await this.bubbleService.fetchDataType(tableName, {
+        limit: 100,
+        cursor: 0,
         includeEmpty: false
       });
 
-      if (!fetchResult.success) {
-        throw new Error(fetchResult.error || 'Failed to fetch from Bubble API');
+      if (!firstCall.success) {
+        throw new Error(firstCall.error || 'First API call failed');
       }
 
-      this.logger.info('Bubble data fetched successfully', runId, {
+      const firstRecords = firstCall.records || [];
+      allRecords.push(...firstRecords);
+      totalFetched = firstRecords.length;
+      
+      this.logger.info('First call completed', runId, {
+        operation: 'manual_first_call',
+        recordsReceived: firstRecords.length,
+        totalFetched,
+        hasMore: firstCall.pagination?.hasMore,
+        remaining: firstCall.pagination?.remaining
+      });
+
+      // Second call - ALWAYS attempt if we need more records
+      const needsSecondCall = totalFetched < limit;
+      const bubbleHasMore = firstCall.pagination?.hasMore === true;
+      const remainingCount = firstCall.pagination?.remaining || 0;
+      
+      if (needsSecondCall) {
+        this.logger.info('Making additional API call for remaining records', runId, {
+          operation: 'manual_second_call_start',
+          cursor: 100,
+          remainingNeeded: limit - totalFetched,
+          bubbleHasMore,
+          remainingFromBubble: remainingCount
+        });
+
+        const secondCall = await this.bubbleService.fetchDataType(tableName, {
+          limit: limit - totalFetched,  // Request exactly what we still need
+          cursor: 100,
+          includeEmpty: false
+        });
+
+        if (secondCall.success) {
+          const secondRecords = secondCall.records || [];
+          allRecords.push(...secondRecords);
+          totalFetched += secondRecords.length;
+          
+          this.logger.info('Additional API call completed', runId, {
+            operation: 'manual_second_call',
+            recordsReceived: secondRecords.length,
+            totalFetched,
+            finalTotal: totalFetched
+          });
+        }
+      }
+      
+      this.logger.info('Paginated fetch completed', runId, {
         operation: 'bubble_fetch_success',
         table: tableName,
         requested: limit,
-        received: fetchResult.records.length,
-        hasMore: fetchResult.pagination?.hasMore || false
+        received: allRecords.length,
+        totalFetched: totalFetched,
+        actualRecordsCount: allRecords.length,
+        totalPages: pageNumber,
+        finalCursor: currentCursor
       });
 
       return {
         success: true,
-        records: fetchResult.records,
-        pagination: fetchResult.pagination,
-        fieldAnalysis: fetchResult.fieldAnalysis
+        records: allRecords,
+        pagination: {
+          totalPages: pageNumber,
+          totalFetched: allRecords.length,
+          requestedLimit: limit,
+          cursor: currentCursor
+        },
+        fieldAnalysis: this.analyzeFields(allRecords)
       };
 
     } catch (error) {
-      this.logger.error('Bubble data fetch failed', runId, {
+      this.logger.error('Paginated fetch failed', runId, {
         operation: 'bubble_fetch_error',
         table: tableName,
         limit,
-        error: error.message
+        error: error.message,
+        totalFetched: allRecords?.length || 0
       });
 
       return {
@@ -216,6 +298,47 @@ class DataSyncService {
         error: error.message
       };
     }
+  }
+
+  /**
+   * Analyze field patterns in fetched data (moved from bubbleService for consistency)
+   */
+  analyzeFields(records) {
+    if (!records || records.length === 0) {
+      return { fieldCount: 0, fields: [], dataTypes: {} };
+    }
+
+    const allFields = new Set();
+    const fieldTypes = {};
+
+    records.forEach(record => {
+      Object.keys(record).forEach(field => {
+        allFields.add(field);
+        
+        const value = record[field];
+        const type = Array.isArray(value) ? 'array' : 
+                    value === null ? 'null' :
+                    typeof value;
+        
+        if (!fieldTypes[field]) {
+          fieldTypes[field] = new Set();
+        }
+        fieldTypes[field].add(type);
+      });
+    });
+
+    // Convert Sets to arrays for JSON serialization
+    const cleanFieldTypes = {};
+    Object.keys(fieldTypes).forEach(field => {
+      cleanFieldTypes[field] = Array.from(fieldTypes[field]);
+    });
+
+    return {
+      fieldCount: allFields.size,
+      fields: Array.from(allFields),
+      dataTypes: cleanFieldTypes,
+      recordCount: records.length
+    };
   }
 
   /**

@@ -173,8 +173,6 @@ class BubbleService {
     // Validate limit (Bubble enforces max 100 per request)
     const maxLimit = Math.min(limit, 100);
     
-    console.log(`📥 Fetching ${dataType} data (limit: ${maxLimit})...`);
-
     try {
       const endpoint = `/api/1.1/obj/${dataType}`;
       const response = await axios.get(`${this.baseUrl}${endpoint}`, {

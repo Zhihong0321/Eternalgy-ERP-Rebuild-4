@@ -13,9 +13,14 @@
       "Bash(npm run deploy:*)",
       "Bash(npm install)",
       "Bash(node:*)",
-      "Bash(npx vite build:*)"
+      "Bash(npx vite build:*)",
+      "Bash(rm:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "E:\\"
+    ]
   }
 }
