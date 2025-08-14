@@ -176,7 +176,7 @@ const DataSync = () => {
       if (result) {
         // Refresh the relationship status for this table
         const statusResult = await getRelationshipStatus(tableName);
-        if (statusResult) {
+        if (statusResult && statusResult.result && statusResult.result.summary) {
           setSyncTables(prev => prev.map(table => 
             table.tablename === tableName 
               ? { ...table, relationshipStatus: statusResult.result.summary }
@@ -184,6 +184,8 @@ const DataSync = () => {
           ));
         }
       }
+    } catch (error) {
+      console.error(`Failed to discover relationships for ${tableName}:`, error);
     } finally {
       setIsSyncing(prev => ({ ...prev, [`discover_${tableName}`]: false }));
     }
