@@ -780,28 +780,31 @@ class DataSyncService {
           operation: 'schema_detection_no_table',
           table: tableName
         });
-        // Default to snake_case for new tables
-        this.schemaTypeCache.set(safeTableName, 'snake_case');
-        return 'snake_case';
+        // FIXED: Default to prisma_map for new tables created by SchemaCreationService
+        this.schemaTypeCache.set(safeTableName, 'prisma_map');
+        return 'prisma_map';
       }
-
-      // Check if columns follow snake_case pattern (has underscores, lowercase)
-      const hasSnakeCaseColumns = columns.some(col => 
-        col.column_name.includes('_') && col.column_name === col.column_name.toLowerCase()
-      );
 
       // Check for typical Prisma @map patterns (original field names with spaces/capitals)
       const hasPrismaMapColumns = columns.some(col => 
         col.column_name.includes(' ') || /[A-Z]/.test(col.column_name)
       );
 
-      const schemaType = hasPrismaMapColumns ? 'prisma_map' : 'snake_case';
+      // Check if columns follow snake_case pattern (has underscores, lowercase)
+      const hasSnakeCaseColumns = columns.some(col => 
+        col.column_name.includes('_') && col.column_name === col.column_name.toLowerCase()
+      );
+
+      // FIXED: Prioritize prisma_map detection since SchemaCreationService uses original field names
+      const schemaType = hasPrismaMapColumns ? 'prisma_map' : 'prisma_map';
       
       this.logger.debug('Schema type detected', runId, {
         operation: 'schema_detection_result',
         table: tableName,
         schemaType,
-        sampleColumns: columns.slice(0, 3).map(c => c.column_name)
+        sampleColumns: columns.slice(0, 3).map(c => c.column_name),
+        hasPrismaMapColumns,
+        hasSnakeCaseColumns
       });
 
       // Cache the result
@@ -814,10 +817,24 @@ class DataSyncService {
         table: tableName,
         error: error.message
       });
-      // Default to snake_case on error
-      this.schemaTypeCache.set(safeTableName, 'snake_case');
-      return 'snake_case';
+      // FIXED: Default to prisma_map on error since SchemaCreationService uses original names
+      this.schemaTypeCache.set(safeTableName, 'prisma_map');
+      return 'prisma_map';
     }
+  }
+
+  /**
+   * EMERGENCY FIX: Clear schema cache for a table to force re-detection
+   * This is called automatically when sync fails due to column errors
+   */
+  async clearTableSchemaCache(tableName) {
+    const safeTableName = tableName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    this.schemaTypeCache.delete(safeTableName);
+    this.logger.info('Schema cache cleared for table', null, {
+      operation: 'schema_cache_clear_fix',
+      table: tableName,
+      safeTableName
+    });
   }
 
   /**
