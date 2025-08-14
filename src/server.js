@@ -91,6 +91,13 @@ app.get('/api', (req, res) => {
         documentedTables: '/api/docs/documented-tables',
         export: '/api/docs/export',
         deleteDescriptions: 'DELETE /api/docs/descriptions/{tableName}'
+      },
+      schemaPatch: {
+        docs: '/api/schema-patch/docs',
+        health: '/api/schema-patch/health',
+        analyze: 'GET /api/schema-patch/analyze/{tableName}',
+        fixMissingFields: 'POST /api/schema-patch/fix-missing-fields/{tableName}',
+        description: '🔧 ISOLATED service for fixing missing field errors (zero impact on sync)'
       }
     },
     status: {
@@ -125,6 +132,7 @@ import logsRoutes from './api/logs.js';
 import schemaRoutes from './api/schema.js';
 import databaseRoutes from './api/database.js';
 import documentationRoutes from './api/documentation.js';
+import schemaPatchRoutes from './api/schemaPatch.js';
 
 app.use('/api/bubble', bubbleRoutes);
 app.use('/api/schema', schemaRoutes);
@@ -132,6 +140,7 @@ app.use('/api/sync', syncRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/database', databaseRoutes);
 app.use('/api/docs', documentationRoutes);
+app.use('/api/schema-patch', schemaPatchRoutes);
 
 // Catch-all handler: send back React's index.html file for any non-API routes
 app.get('*', (req, res) => {
