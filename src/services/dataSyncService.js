@@ -752,37 +752,10 @@ class DataSyncService {
           // Use adaptive field mapping based on detected schema type
           const columnName = this.getFieldMapping(fieldName, schemaType);
           
-          // Handle different data types with proper PostgreSQL array/JSONB handling
+          // SIMPLE RULE: ALL arrays from Bubble → TEXT[] format
           if (Array.isArray(value)) {
-            // Check if this looks like a Bubble ID relationship array
-            const isRelationshipArray = this.isRelationshipArray(value, fieldName);
-            
-            // DEBUG: Log the detection result for access_level specifically
-            if (fieldName === 'Access Level') {
-              this.logger.info('DEBUG: Access Level array detection', runId, {
-                operation: 'access_level_debug',
-                fieldName: fieldName,
-                columnName: columnName,
-                isRelationshipArray: isRelationshipArray,
-                sampleValues: value.slice(0, 3),
-                arrayLength: value.length
-              });
-            }
-            
-            if (isRelationshipArray) {
-              // For foreign key relationships, check if column is TEXT[] or JSONB
-              const columnType = await this.getColumnType(safeTableName, columnName, runId);
-              if (columnType && columnType.includes('text[]')) {
-                // For PostgreSQL TEXT[] columns, pass as array
-                dbRecord[columnName] = value;
-              } else {
-                // For PostgreSQL JSONB columns, pass as JavaScript object
-                dbRecord[columnName] = value;
-              }
-            } else {
-              // For complex data arrays, always use JSONB format
-              dbRecord[columnName] = value;
-            }
+            // All arrays are stored as TEXT[] - pass as array directly
+            dbRecord[columnName] = value;
           } else if (typeof value === 'object' && value !== null) {
             // For PostgreSQL JSONB columns, pass as JavaScript object (Prisma handles conversion)
             dbRecord[columnName] = value;

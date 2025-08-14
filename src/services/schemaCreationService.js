@@ -437,22 +437,9 @@ class SchemaCreationService {
         if (value instanceof Date) {
           fieldInfo.sqlType = 'TIMESTAMPTZ';
         } else if (Array.isArray(value)) {
-          // Check if array contains Bubble IDs (relationship array)
-          const isRelationshipArray = this.isRelationshipArray(value, fieldName);
-          if (isRelationshipArray) {
-            fieldInfo.sqlType = 'TEXT[]';
-            fieldInfo.isRelationship = true;
-            fieldInfo.comment = `Array of Bubble IDs - relationships to ${this.guessReferencedTable(fieldName)}`;
-            fieldInfo.relationship = {
-              field: fieldName,
-              referencedTable: this.guessReferencedTable(fieldName),
-              referencedField: 'bubble_id',
-              isArray: true
-            };
-          } else {
-            fieldInfo.sqlType = 'JSONB';
-            fieldInfo.comment = 'Array data stored as JSONB';
-          }
+          // SIMPLE RULE: ALL arrays from Bubble → TEXT[]
+          fieldInfo.sqlType = 'TEXT[]';
+          fieldInfo.comment = 'Array data from Bubble - stored as TEXT[]';
         } else {
           fieldInfo.sqlType = 'JSONB';
           fieldInfo.comment = 'Object data stored as JSONB';
