@@ -113,12 +113,24 @@ Based on lessons from 25+ failed attempts:
 - Custom field mapping services
 - Middleware between Bubble and Prisma
 - Hardcoded data type or field names
+- **OVER-ENGINEERING: Complex type detection logic that creates inconsistencies**
+- **"Smart" array type detection between TEXT[] and JSONB - causes 3+ day debugging cycles**
 
 ✅ **ALWAYS DO:**
 - Railway-only development and testing
 - Ultra-simple architecture approach
 - Fail fast approach
 - Use UDLS-compliant logging for all operations
+- **SIMPLE RULE: ALL Bubble arrays → TEXT[] in PostgreSQL (no exceptions)**
+
+## ⚠️ CRITICAL WARNING: NO OVER-ENGINEERING
+
+**LEARNED THE HARD WAY (3+ days wasted):**
+- Bubble.io only sends simple data: strings, numbers, arrays of strings
+- ALL arrays from Bubble should be TEXT[] in PostgreSQL
+- Do NOT create "intelligent" type detection between TEXT[] and JSONB
+- Consistency > "Smart" logic
+- Simple, predictable behavior > Complex edge case handling
 
 ## Memory System
 
