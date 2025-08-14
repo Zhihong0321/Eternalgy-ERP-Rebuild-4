@@ -1,11 +1,13 @@
 import express from 'express';
 import DataSyncService from '../services/dataSyncService.js';
 import BatchSyncService from '../services/batchSyncService.js';
+import RelationshipDiscoveryService from '../services/relationshipDiscoveryService.js';
 import { loggers } from '../utils/logger.js';
 
 const router = express.Router();
 const dataSyncService = new DataSyncService();
 const batchSyncService = new BatchSyncService();
+const relationshipDiscoveryService = new RelationshipDiscoveryService();
 const logger = loggers.api;
 
 /**
@@ -506,6 +508,140 @@ function groupLogsByRun(logs) {
   return Object.values(runGroups)
     .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 }
+
+// POST /api/sync/discover/:tableName - Manual relationship discovery for a table
+router.post('/discover/:tableName', async (req, res) => {
+  const runId = logger.generateRunId();
+  const startTime = Date.now();
+  const tableName = req.params.tableName;
+  
+  logger.info('API request: Manual relationship discovery', runId, {
+    operation: 'api_request',
+    endpoint: '/api/sync/discover/:tableName',
+    table: tableName,
+    params: req.params
+  });
+
+  try {
+    // Execute relationship discovery for the table
+    const discoveryResult = await relationshipDiscoveryService.discoverTableRelationships(tableName, runId);
+
+    if (!discoveryResult.success) {
+      throw new Error(discoveryResult.error);
+    }
+
+    const duration = Date.now() - startTime;
+
+    logger.info('API response: Relationship discovery completed', runId, {
+      operation: 'api_response',
+      endpoint: '/api/sync/discover/:tableName',
+      table: tableName,
+      status: 200,
+      processedFields: discoveryResult.processed,
+      relationshipsFound: discoveryResult.relationships.length,
+      duration
+    });
+
+    res.json({
+      success: true,
+      runId,
+      endpoint: 'relationship_discovery',
+      table: tableName,
+      result: discoveryResult,
+      duration,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    
+    logger.error('API error: Relationship discovery failed', runId, {
+      operation: 'api_error',
+      endpoint: '/api/sync/discover/:tableName',
+      table: tableName,
+      error: error.message,
+      duration
+    });
+
+    res.status(500).json({
+      success: false,
+      runId,
+      endpoint: 'relationship_discovery',
+      table: tableName,
+      error: error.message,
+      duration,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// GET /api/sync/relationship-status/:tableName - Get relationship discovery status for a table
+router.get('/relationship-status/:tableName', async (req, res) => {
+  const runId = logger.generateRunId();
+  const startTime = Date.now();
+  const tableName = req.params.tableName;
+  
+  logger.info('API request: Get relationship status', runId, {
+    operation: 'api_request',
+    endpoint: '/api/sync/relationship-status/:tableName',
+    table: tableName,
+    params: req.params
+  });
+
+  try {
+    // Get relationship status for the table
+    const statusResult = await relationshipDiscoveryService.getTableRelationshipStatus(tableName, runId);
+
+    if (!statusResult.success) {
+      throw new Error(statusResult.error);
+    }
+
+    const duration = Date.now() - startTime;
+
+    logger.info('API response: Relationship status retrieved', runId, {
+      operation: 'api_response',
+      endpoint: '/api/sync/relationship-status/:tableName',
+      table: tableName,
+      status: 200,
+      isRelationalReady: statusResult.summary.isRelationalReady,
+      totalFields: statusResult.summary.total,
+      linkedFields: statusResult.summary.linked,
+      pendingFields: statusResult.summary.pendingLink,
+      duration
+    });
+
+    res.json({
+      success: true,
+      runId,
+      endpoint: 'relationship_status',
+      table: tableName,
+      result: statusResult,
+      duration,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    
+    logger.error('API error: Failed to get relationship status', runId, {
+      operation: 'api_error',
+      endpoint: '/api/sync/relationship-status/:tableName',
+      table: tableName,
+      error: error.message,
+      duration
+    });
+
+    res.status(500).json({
+      success: false,
+      runId,
+      endpoint: 'relationship_status',
+      table: tableName,
+      error: error.message,
+      duration,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 // Simple test endpoint to verify database storage capability
 router.post('/test/:tableName', async (req, res) => {

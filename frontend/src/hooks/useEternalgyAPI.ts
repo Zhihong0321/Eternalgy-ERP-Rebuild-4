@@ -36,12 +36,22 @@ export interface SyncTable {
   tablename: string;
   recordCount: number;
   withData: boolean;
+  relationshipStatus?: RelationshipStatus;
 }
 
 export interface BubbleConnectionStatus {
   connected: boolean;
   message: string;
   timestamp: string;
+}
+
+export interface RelationshipStatus {
+  total: number;
+  relationalConfirmed: number;
+  textOnly: number;
+  linked: number;
+  pendingLink: number;
+  isRelationalReady: boolean;
 }
 
 export const useEternalgyAPI = () => {
@@ -181,6 +191,36 @@ export const useEternalgyAPI = () => {
   // Bubble connection test  
   const testBubbleConnection = () => handleRequest(() => api.get('/api/bubble/test-connection'));
 
+  // Relationship discovery methods
+  const discoverRelationships = async (tableName: string) => {
+    setSyncProgress({
+      isActive: true,
+      message: `Discovering relationships for ${tableName}...`,
+      operation: `discover_${tableName}`,
+      startTime: Date.now()
+    });
+    
+    try {
+      const result = await handleRequest(() => api.post(`/api/sync/discover/${tableName}`));
+      setSyncProgress({
+        isActive: false,
+        message: result ? `${tableName} relationship discovery completed!` : `${tableName} discovery failed`,
+        operation: `discover_${tableName}`
+      });
+      return result;
+    } catch (error) {
+      setSyncProgress({
+        isActive: false,
+        message: `${tableName} discovery failed: ${error}`,
+        operation: `discover_${tableName}`
+      });
+      throw error;
+    }
+  };
+
+  const getRelationshipStatus = (tableName: string) => 
+    handleRequest(() => api.get(`/api/sync/relationship-status/${tableName}`));
+
   return {
     loading,
     error,
@@ -197,6 +237,8 @@ export const useEternalgyAPI = () => {
     createTables,
     recreateTable,
     testBubbleConnection,
+    discoverRelationships,
+    getRelationshipStatus,
     // Bubble.io specific methods
     getBubbleDataTypes,
     getBubbleData,

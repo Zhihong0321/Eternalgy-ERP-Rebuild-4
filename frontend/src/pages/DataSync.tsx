@@ -14,6 +14,7 @@ import {
   Trash2,
   Settings,
   RotateCcw,
+  Network,
 } from 'lucide-react';
 import { useEternalgyAPI } from '@/hooks/useEternalgyAPI';
 import type { BubbleConnectionStatus, SyncTable } from '@/hooks/useEternalgyAPI';
@@ -28,6 +29,8 @@ const DataSync = () => {
     wipeAllData,
     createTables,
     recreateTable,
+    discoverRelationships,
+    getRelationshipStatus,
     loading,
     error,
     syncProgress
@@ -165,6 +168,27 @@ const DataSync = () => {
     }
   };
 
+  const handleDiscoverRelationships = async (tableName: string) => {
+    setIsSyncing(prev => ({ ...prev, [`discover_${tableName}`]: true }));
+    
+    try {
+      const result = await discoverRelationships(tableName);
+      if (result) {
+        // Refresh the relationship status for this table
+        const statusResult = await getRelationshipStatus(tableName);
+        if (statusResult) {
+          setSyncTables(prev => prev.map(table => 
+            table.tablename === tableName 
+              ? { ...table, relationshipStatus: statusResult.result.summary }
+              : table
+          ));
+        }
+      }
+    } finally {
+      setIsSyncing(prev => ({ ...prev, [`discover_${tableName}`]: false }));
+    }
+  };
+
   const updateTableLimit = (tableName: string, limit: number) => {
     setTableLimits(prev => ({
       ...prev,
@@ -189,6 +213,24 @@ const DataSync = () => {
     ) : (
       <Badge variant="destructive">Disconnected</Badge>
     );
+  };
+
+  const getRelationshipStatusBadge = (table: SyncTable) => {
+    if (!table.relationshipStatus) {
+      return <Badge variant="outline" className="text-gray-500">Not Discovered</Badge>;
+    }
+
+    const status = table.relationshipStatus;
+    
+    if (status.isRelationalReady) {
+      return <Badge className="bg-green-500">RELATIONAL READY</Badge>;
+    } else if (status.pendingLink > 0) {
+      return <Badge className="bg-yellow-500">Pending ({status.pendingLink})</Badge>;
+    } else if (status.total === 0) {
+      return <Badge variant="outline" className="text-gray-500">No Fields</Badge>;
+    } else {
+      return <Badge variant="outline" className="text-blue-600">Discovering</Badge>;
+    }
   };
 
   return (
@@ -465,6 +507,8 @@ const DataSync = () => {
                           No Data
                         </Badge>
                       )}
+                      {/* Relationship Status Badge */}
+                      {getRelationshipStatusBadge(table)}
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -475,11 +519,11 @@ const DataSync = () => {
                       className="w-16 text-center"
                       min="1"
                       max="99999"
-                      disabled={isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`]}
+                      disabled={isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || isSyncing[`discover_${table.tablename}`]}
                     />
                     <Button
                       onClick={() => handleSyncTable(table.tablename)}
-                      disabled={loading || isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || syncProgress.isActive}
+                      disabled={loading || isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || isSyncing[`discover_${table.tablename}`] || syncProgress.isActive}
                       size="sm"
                       className="w-20"
                     >
@@ -493,8 +537,24 @@ const DataSync = () => {
                       )}
                     </Button>
                     <Button
+                      onClick={() => handleDiscoverRelationships(table.tablename)}
+                      disabled={loading || isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || isSyncing[`discover_${table.tablename}`] || syncProgress.isActive}
+                      size="sm"
+                      variant="outline"
+                      className="w-24 border-blue-200 text-blue-600 hover:bg-blue-50"
+                    >
+                      {isSyncing[`discover_${table.tablename}`] || (syncProgress.isActive && syncProgress.operation === `discover_${table.tablename}`) ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Network className="mr-1 h-3 w-3" />
+                          DISCOVER
+                        </>
+                      )}
+                    </Button>
+                    <Button
                       onClick={() => handleRecreateTable(table.tablename)}
-                      disabled={loading || isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || syncProgress.isActive}
+                      disabled={loading || isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || isSyncing[`discover_${table.tablename}`] || syncProgress.isActive}
                       size="sm"
                       variant="outline"
                       className="w-24 border-orange-200 text-orange-600 hover:bg-orange-50"
