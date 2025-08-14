@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 class RelationshipDiscoveryService {
   constructor() {
-    this.logger = loggers.relationshipDiscovery;
+    this.logger = loggers.discovery;
   }
 
   /**
