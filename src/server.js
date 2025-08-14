@@ -98,6 +98,14 @@ app.get('/api', (req, res) => {
         analyze: 'GET /api/schema-patch/analyze/{tableName}',
         fixMissingFields: 'POST /api/schema-patch/fix-missing-fields/{tableName}',
         description: '🔧 ISOLATED service for fixing missing field errors (zero impact on sync)'
+      },
+      pendingPatches: {
+        list: 'GET /api/pending-patches/list',
+        approve: 'POST /api/pending-patches/approve/{id}',
+        reject: 'POST /api/pending-patches/reject/{id}',
+        history: 'GET /api/pending-patches/history',
+        health: 'GET /api/pending-patches/health',
+        description: '📋 Simple approval workflow for missing fields - sync fails → create request → user approves → retry sync'
       }
     },
     status: {
@@ -133,6 +141,7 @@ import schemaRoutes from './api/schema.js';
 import databaseRoutes from './api/database.js';
 import documentationRoutes from './api/documentation.js';
 import schemaPatchRoutes from './api/schemaPatch.js';
+import pendingPatchRoutes from './api/pendingPatches.js';
 
 app.use('/api/bubble', bubbleRoutes);
 app.use('/api/schema', schemaRoutes);
@@ -141,6 +150,7 @@ app.use('/api/logs', logsRoutes);
 app.use('/api/database', databaseRoutes);
 app.use('/api/docs', documentationRoutes);
 app.use('/api/schema-patch', schemaPatchRoutes);
+app.use('/api/pending-patches', pendingPatchRoutes);
 
 // Catch-all handler: send back React's index.html file for any non-API routes
 app.get('*', (req, res) => {
