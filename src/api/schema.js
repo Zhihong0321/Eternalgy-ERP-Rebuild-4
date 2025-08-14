@@ -326,26 +326,15 @@ router.post('/recreate-table/:tableName', async (req, res) => {
   });
 
   try {
-    // First discover all tables to find the exact table info
-    const discoveryResult = await schemaCreationService.discoverAllDataTypes(runId);
-    
-    if (!discoveryResult.success) {
-      throw new Error('Failed to discover data types: ' + discoveryResult.error);
-    }
+    // Simplified approach: create table info object and use createSingleTable directly
+    const tableInfo = { 
+      name: tableName,
+      hasData: true // Assume has data since user is trying to recreate
+    };
 
-    // Find the specific table
-    const tableInfo = discoveryResult.tables.find(dt => 
-      dt.name.toLowerCase() === tableName.toLowerCase()
-    );
-
-    if (!tableInfo) {
-      throw new Error(`Table '${tableName}' not found in Bubble.io data types`);
-    }
-
-    logger.info('Found table in discovery results', runId, {
-      operation: 'table_found',
-      tableName,
-      recordCount: tableInfo.recordCount
+    logger.info('Starting table recreation', runId, {
+      operation: 'table_recreation_start',
+      tableName
     });
 
     // Use createSingleTable with dropExisting=true to recreate the table
