@@ -65,6 +65,9 @@ class DataSyncService {
       // Step 2: Process and sync records to database
       const syncResult = await this.syncRecordsToDatabase(tableName, records, runId);
 
+      // Step 2.5: Auto-populate relationships (SAFE - runs after successful sync)
+      await this.processRelationshipsForRecords(tableName, records, runId);
+
       // Step 3: Complete sync logging
       const totalDuration = Date.now() - startTime;
       
@@ -1067,6 +1070,189 @@ class DataSyncService {
       this.logger.debug('Schema cache cleared for all tables', null, {
         operation: 'schema_cache_clear_all'
       });
+    }
+  }
+
+  /**
+   * RELATIONSHIP AUTO-POPULATION HOOK (ADDITIVE ONLY)
+   * Safe enhancement that runs AFTER successful sync
+   */
+
+  /**
+   * Process relationships for all synced records
+   * SAFE - if this fails, it doesn't affect the main sync
+   */
+  async processRelationshipsForRecords(tableName, records, runId) {
+    try {
+      this.logger.info('Starting relationship auto-population', runId, {
+        operation: 'relationship_auto_population_start',
+        table: tableName,
+        recordCount: records.length
+      });
+
+      // Only process relationships for agent and user tables for now (testing)
+      if (!['agent', 'user'].includes(tableName)) {
+        this.logger.debug('Skipping relationship processing for non-test table', runId, {
+          operation: 'relationship_skip_table',
+          table: tableName
+        });
+        return;
+      }
+
+      let processedRelationships = 0;
+      
+      for (const record of records) {
+        try {
+          // Discover relationships for this record
+          const relationships = await this.discoverRelationships(tableName, record, runId);
+          
+          if (relationships.length > 0) {
+            this.logger.info('Found relationships for record', runId, {
+              operation: 'relationships_found',
+              table: tableName,
+              bubbleId: record.bubble_id?.substring(0, 20) + '...',
+              relationshipCount: relationships.length,
+              relationships: relationships.map(r => ({
+                field: r.sourceField,
+                targetTable: r.targetTable,
+                isArray: r.isArray
+              }))
+            });
+            processedRelationships += relationships.length;
+          }
+        } catch (recordError) {
+          // Log error but continue with other records
+          this.logger.warn('Failed to process relationships for record', runId, {
+            operation: 'relationship_record_error',
+            table: tableName,
+            bubbleId: record.bubble_id?.substring(0, 20) + '...',
+            error: recordError.message
+          });
+        }
+      }
+
+      this.logger.info('Relationship auto-population completed', runId, {
+        operation: 'relationship_auto_population_complete',
+        table: tableName,
+        processedRelationships
+      });
+
+    } catch (error) {
+      // CRITICAL: This error should NEVER break the main sync
+      this.logger.warn('Relationship auto-population failed (sync still successful)', runId, {
+        operation: 'relationship_auto_population_error',
+        table: tableName,
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Discover foreign key relationships by analyzing Bubble ID patterns
+   * READ-ONLY operation - does not modify any data
+   */
+  async discoverRelationships(tableName, record, runId) {
+    try {
+      const relationships = [];
+      const bubbleIdPattern = /^\d{10,}x\d{15,}$/;
+
+      // Scan all fields in the record for Bubble ID patterns
+      for (const [fieldName, value] of Object.entries(record)) {
+        // Skip own bubble_id (that's the primary key, not a foreign key)
+        if (fieldName === 'bubble_id') continue;
+
+        let bubbleIds = [];
+
+        // Handle single Bubble ID (TEXT field)
+        if (typeof value === 'string' && bubbleIdPattern.test(value)) {
+          bubbleIds = [value];
+        }
+        // Handle array of Bubble IDs (TEXT[] field)
+        else if (Array.isArray(value) && value.length > 0) {
+          // Take first element to test if it's a Bubble ID pattern
+          if (typeof value[0] === 'string' && bubbleIdPattern.test(value[0])) {
+            bubbleIds = value.filter(id => typeof id === 'string' && bubbleIdPattern.test(id));
+          }
+        }
+
+        // If we found Bubble IDs, try to discover which table they belong to
+        if (bubbleIds.length > 0) {
+          const targetTable = await this.findBubbleIdTable(bubbleIds[0], runId);
+          if (targetTable) {
+            relationships.push({
+              sourceTable: tableName,
+              sourceField: fieldName,
+              targetTable: targetTable,
+              isArray: Array.isArray(value),
+              bubbleIds: bubbleIds
+            });
+          }
+        }
+      }
+
+      return relationships;
+    } catch (error) {
+      this.logger.warn('Relationship discovery failed (safe to ignore)', runId, {
+        operation: 'relationship_discovery_error',
+        table: tableName,
+        error: error.message
+      });
+      return []; // Return empty array on error - doesn't break sync
+    }
+  }
+
+  /**
+   * Find which table contains a specific Bubble ID
+   * READ-ONLY operation
+   */
+  async findBubbleIdTable(bubbleId, runId) {
+    try {
+      // Get list of all tables in the database
+      const tables = await this.prisma.$queryRaw`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_type = 'BASE TABLE'
+        AND table_name != 'relationship_metadata'
+      `;
+
+      // Search each table for this Bubble ID
+      for (const table of tables) {
+        const tableName = table.table_name;
+        
+        try {
+          const result = await this.prisma.$queryRawUnsafe(`
+            SELECT 1 FROM "${tableName}" 
+            WHERE bubble_id = $1 
+            LIMIT 1
+          `, bubbleId);
+
+          if (result.length > 0) {
+            this.logger.debug('Found Bubble ID target table', runId, {
+              operation: 'bubble_id_found',
+              bubbleId: bubbleId.substring(0, 20) + '...',
+              targetTable: tableName
+            });
+            return tableName;
+          }
+        } catch (tableError) {
+          // Ignore errors for individual tables (might not have bubble_id column)
+          continue;
+        }
+      }
+
+      this.logger.debug('Bubble ID not found in any table', runId, {
+        operation: 'bubble_id_not_found', 
+        bubbleId: bubbleId.substring(0, 20) + '...'
+      });
+      return null;
+
+    } catch (error) {
+      this.logger.warn('Failed to find Bubble ID table', runId, {
+        operation: 'find_table_error',
+        error: error.message
+      });
+      return null;
     }
   }
 }
