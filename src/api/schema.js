@@ -338,6 +338,7 @@ router.post('/recreate-table/:tableName', async (req, res) => {
     });
 
     // Use createSingleTable with dropExisting=true to recreate the table
+    // Note: createSingleTable throws on error, returns stats on success
     const createResult = await schemaCreationService.createSingleTable(
       tableInfo, 
       5, // sampleSize
@@ -345,9 +346,12 @@ router.post('/recreate-table/:tableName', async (req, res) => {
       runId
     );
 
-    if (!createResult.success) {
-      throw new Error(createResult.error || 'Table recreation failed');
-    }
+    logger.info('CreateSingleTable completed successfully', runId, {
+      operation: 'create_result_success',
+      fieldCount: createResult.fieldCount,
+      relationshipCount: createResult.relationshipCount,
+      sampleRecords: createResult.sampleRecords
+    });
 
     const duration = Date.now() - startTime;
 
@@ -356,7 +360,7 @@ router.post('/recreate-table/:tableName', async (req, res) => {
       endpoint: '/api/schema/recreate-table/:tableName',
       status: 200,
       tableName,
-      created: createResult.created,
+      fieldCount: createResult.fieldCount,
       duration
     });
 
@@ -365,7 +369,9 @@ router.post('/recreate-table/:tableName', async (req, res) => {
       runId,
       endpoint: 'schema_recreate_table',
       tableName,
-      created: createResult.created,
+      fieldCount: createResult.fieldCount,
+      relationshipCount: createResult.relationshipCount,
+      sampleRecords: createResult.sampleRecords,
       message: `Table '${tableName}' recreated successfully with updated schema`,
       duration,
       timestamp: new Date().toISOString()
