@@ -1,6 +1,6 @@
 {
   "name": "eternalgy-erp-rebuild-4",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Bubble.io to PostgreSQL sync system - Railway deployment",
   "main": "src/server.js",
   "type": "module",
