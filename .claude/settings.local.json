@@ -14,7 +14,9 @@
       "Bash(npm install)",
       "Bash(node:*)",
       "Bash(npx vite build:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": [],

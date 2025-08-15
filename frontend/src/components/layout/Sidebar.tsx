@@ -22,6 +22,7 @@ import {
   UserCheck,
   Briefcase,
   BookOpen,
+  AlertTriangle,
 } from 'lucide-react';
 import type { NavigationItem } from '@/types/index';
 
@@ -97,6 +98,12 @@ const dataManagementItems: NavigationItem[] = [
     label: 'Schema Description',
     icon: BookOpen,
     href: '/schema-description',
+  },
+  {
+    id: 'pending-patches',
+    label: 'Pending Patches',
+    icon: AlertTriangle,
+    href: '/pending-patches',
   },
   {
     id: 'system-status',
