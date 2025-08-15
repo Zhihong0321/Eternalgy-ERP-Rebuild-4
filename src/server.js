@@ -142,6 +142,7 @@ import databaseRoutes from './api/database.js';
 import documentationRoutes from './api/documentation.js';
 import schemaPatchRoutes from './api/schemaPatch.js';
 import pendingPatchRoutes from './api/pendingPatches.js';
+import incrementalSyncRoutes from './api/incrementalSync.js';
 
 app.use('/api/bubble', bubbleRoutes);
 app.use('/api/schema', schemaRoutes);
@@ -151,6 +152,7 @@ app.use('/api/database', databaseRoutes);
 app.use('/api/docs', documentationRoutes);
 app.use('/api/schema-patch', schemaPatchRoutes);
 app.use('/api/pending-patches', pendingPatchRoutes);
+app.use('/api/sync', incrementalSyncRoutes);
 
 // Catch-all handler: send back React's index.html file for any non-API routes
 app.get('*', (req, res) => {

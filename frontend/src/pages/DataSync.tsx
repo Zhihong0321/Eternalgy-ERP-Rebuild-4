@@ -25,6 +25,7 @@ const DataSync = () => {
     getDataTypes,
     syncAllTables,
     syncTable,
+    syncTableIncremental,
     getSyncTables,
     wipeAllData,
     createTables,
@@ -150,6 +151,21 @@ const DataSync = () => {
       }
     } finally {
       setIsSyncing(prev => ({ ...prev, [tableName]: false }));
+    }
+  };
+
+  const handleSyncTableIncremental = async (tableName: string) => {
+    const limit = tableLimits[tableName] || 100; // Default 100 for SYNC+
+    setIsSyncing(prev => ({ ...prev, [`${tableName}_plus`]: true }));
+    
+    try {
+      const result = await syncTableIncremental(tableName, limit);
+      // Refresh table data to update record counts after successful incremental sync
+      if (result) {
+        setTimeout(fetchSyncData, 1500); // Refresh after 1.5 seconds to show updated counts
+      }
+    } finally {
+      setIsSyncing(prev => ({ ...prev, [`${tableName}_plus`]: false }));
     }
   };
 
@@ -537,6 +553,23 @@ const DataSync = () => {
                         <>
                           <Play className="mr-1 h-3 w-3" />
                           SYNC
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={() => handleSyncTableIncremental(table.tablename)}
+                      disabled={loading || isSyncing[`${table.tablename}_plus`] || isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || isSyncing[`discover_${table.tablename}`] || syncProgress.isActive}
+                      size="sm"
+                      variant="outline"
+                      className="w-20 border-green-200 text-green-600 hover:bg-green-50 font-semibold"
+                      title="Incremental sync - only fetches NEW records since last sync"
+                    >
+                      {isSyncing[`${table.tablename}_plus`] || (syncProgress.isActive && syncProgress.operation === `sync_plus_${table.tablename}`) ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Zap className="mr-1 h-3 w-3" />
+                          SYNC+
                         </>
                       )}
                     </Button>

@@ -176,6 +176,32 @@ export const useEternalgyAPI = () => {
       throw error;
     }
   };
+
+  const syncTableIncremental = async (tableName: string, limit: number = 100) => {
+    setSyncProgress({
+      isActive: true,
+      message: `SYNC+ ${tableName} (${limit} new records)...`,
+      operation: `sync_plus_${tableName}`,
+      startTime: Date.now()
+    });
+    
+    try {
+      const result = await handleRequest(() => api.post(`/api/sync/table/${tableName}/plus?limit=${limit}`));
+      setSyncProgress({
+        isActive: false,
+        message: result ? `${tableName} SYNC+ completed!` : `${tableName} SYNC+ failed`,
+        operation: `sync_plus_${tableName}`
+      });
+      return result;
+    } catch (error) {
+      setSyncProgress({
+        isActive: false,
+        message: `${tableName} SYNC+ failed: ${error}`,
+        operation: `sync_plus_${tableName}`
+      });
+      throw error;
+    }
+  };
   
   const getSyncTables = () => handleRequest(() => api.get('/api/database/tables'));
   
@@ -232,6 +258,7 @@ export const useEternalgyAPI = () => {
     analyzeDataStructure,
     syncAllTables,
     syncTable,
+    syncTableIncremental,
     getSyncTables,
     wipeAllData,
     createTables,

@@ -48,3 +48,13 @@ model pending_schema_patches {
 
   @@unique([table_name, field_name])
 }
+
+model sync_cursors {
+  id            Int       @id @default(autoincrement())
+  table_name    String    @unique
+  last_cursor   Int       @default(0)
+  last_sync_at  DateTime  @default(now())
+  sync_run_id   String?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @default(now())
+}
