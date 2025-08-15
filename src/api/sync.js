@@ -579,6 +579,120 @@ router.post('/discover/:tableName', async (req, res) => {
   }
 });
 
+// POST /api/sync/discover-all - Discover relationships for ALL tables
+router.post('/discover-all', async (req, res) => {
+  const runId = logger.generateRunId();
+  const startTime = Date.now();
+  
+  logger.info('API request: Discover all table relationships', runId, {
+    operation: 'api_request',
+    endpoint: '/api/sync/discover-all'
+  });
+
+  try {
+    // Get all tables that have data
+    const tablesResult = await batchSyncService.getAvailableTables(runId, {
+      onlyWithData: true
+    });
+
+    if (!tablesResult.success) {
+      throw new Error('Failed to get available tables');
+    }
+
+    const tables = tablesResult.data.tables || [];
+    const results = [];
+    let successCount = 0;
+    let errorCount = 0;
+
+    logger.info('Starting discovery for all tables', runId, {
+      operation: 'discover_all_start',
+      totalTables: tables.length
+    });
+
+    // Discover relationships for each table
+    for (let i = 0; i < tables.length; i++) {
+      const table = tables[i];
+      
+      try {
+        logger.info(`Discovering table ${i + 1}/${tables.length}: ${table.name}`, runId, {
+          operation: 'discover_all_progress',
+          table: table.name,
+          progress: `${i + 1}/${tables.length}`
+        });
+
+        const discoveryResult = await relationshipDiscoveryService.discoverTableRelationships(table.name, runId);
+        
+        if (discoveryResult && discoveryResult.success) {
+          results.push({
+            table: table.name,
+            success: true,
+            processed: discoveryResult.processed,
+            relationships: discoveryResult.relationships?.length || 0
+          });
+          successCount++;
+        } else {
+          results.push({
+            table: table.name,
+            success: false,
+            error: discoveryResult?.error || 'Unknown error'
+          });
+          errorCount++;
+        }
+      } catch (error) {
+        results.push({
+          table: table.name,
+          success: false,
+          error: error.message
+        });
+        errorCount++;
+      }
+    }
+
+    const duration = Date.now() - startTime;
+
+    logger.info('API response: Discover all completed', runId, {
+      operation: 'api_response',
+      endpoint: '/api/sync/discover-all',
+      status: 200,
+      totalTables: tables.length,
+      successCount,
+      errorCount,
+      duration
+    });
+
+    res.json({
+      success: true,
+      endpoint: 'discover_all',
+      tables: tables.length,
+      results: {
+        success: successCount,
+        errors: errorCount,
+        details: results
+      },
+      duration,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    
+    logger.error('API error: Discover all failed', runId, {
+      operation: 'api_error',
+      endpoint: '/api/sync/discover-all',
+      error: error.message,
+      duration
+    });
+
+    res.status(500).json({
+      success: false,
+      endpoint: 'discover_all',
+      error: error.message,
+      duration,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // GET /api/sync/relationship-status/:tableName - Get relationship discovery status for a table
 router.get('/relationship-status/:tableName', async (req, res) => {
   const runId = logger.generateRunId();

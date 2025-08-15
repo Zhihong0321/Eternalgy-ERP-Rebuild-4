@@ -239,6 +239,14 @@ export const useEternalgyAPI = () => {
   const getRelationshipStatus = (tableName: string) => 
     handleRequest(() => api.get(`/api/sync/relationship-status/${tableName}`));
 
+  const discoverAllRelationships = async () => {
+    return await withSyncLock(
+      'discover_all',
+      'Discovering relationships for all tables...',
+      () => handleRequest(() => api.post('/api/sync/discover-all'))
+    );
+  };
+
   return {
     loading,
     error,
@@ -258,6 +266,7 @@ export const useEternalgyAPI = () => {
     recreateTable,
     testBubbleConnection,
     discoverRelationships,
+    discoverAllRelationships,
     getRelationshipStatus,
     // Bubble.io specific methods
     getBubbleDataTypes,

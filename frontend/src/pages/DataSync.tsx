@@ -33,6 +33,7 @@ const DataSync = () => {
     createTables,
     recreateTable,
     discoverRelationships,
+    discoverAllRelationships,
     getRelationshipStatus,
     loading,
     error,
@@ -70,11 +71,29 @@ const DataSync = () => {
     // Get sync tables from PostgreSQL
     const tablesData = await getSyncTables();
     if (tablesData && tablesData.tables) {
-      setSyncTables(tablesData.tables);
+      const tables = tablesData.tables;
+      
+      // Load relationship status for each table from database
+      const tablesWithStatus = await Promise.all(
+        tables.map(async (table: any) => {
+          try {
+            const statusResult = await getRelationshipStatus(table.tablename);
+            return {
+              ...table,
+              relationshipStatus: statusResult?.result?.summary || null
+            };
+          } catch (error) {
+            // If status fetch fails, just return table without status
+            return table;
+          }
+        })
+      );
+      
+      setSyncTables(tablesWithStatus);
       
       // Initialize table limits with default value 3
       const initialLimits: Record<string, number> = {};
-      tablesData.tables.forEach((table: any) => {
+      tables.forEach((table: any) => {
         initialLimits[table.tablename] = tableLimits[table.tablename] || 3;
       });
       setTableLimits(initialLimits);
@@ -226,6 +245,22 @@ const DataSync = () => {
       console.error(`Failed to discover relationships for ${tableName}:`, error);
     } finally {
       setIsSyncing(prev => ({ ...prev, [`discover_${tableName}`]: false }));
+    }
+  };
+
+  const handleDiscoverAllRelationships = async () => {
+    setIsSyncing(prev => ({ ...prev, 'discover_all': true }));
+    
+    try {
+      const result = await discoverAllRelationships();
+      if (result) {
+        // Refresh all table relationship statuses
+        setTimeout(fetchSyncData, 2000); // Refresh to show updated statuses
+      }
+    } catch (error) {
+      console.error('Failed to discover all relationships:', error);
+    } finally {
+      setIsSyncing(prev => ({ ...prev, 'discover_all': false }));
     }
   };
 
@@ -401,7 +436,7 @@ const DataSync = () => {
       </div>
 
       {/* Sync Control */}
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -505,6 +540,47 @@ const DataSync = () => {
                   <>
                     <Play className="mr-2 h-4 w-4" />
                     Sync All Data
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Network className="mr-2 h-5 w-5 text-purple-500" />
+              Discover All Relationships
+            </CardTitle>
+            <CardDescription>
+              Analyze all tables for relational data relationships
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="p-4 border border-purple-200 rounded-lg bg-purple-50">
+                <div className="space-y-2">
+                  <h3 className="font-medium text-purple-900">🔍 Relationship Discovery</h3>
+                  <p className="text-sm text-purple-700">
+                    Analyzes all table fields to identify Bubble ID relationships and mark tables as "RELATIONAL READY".
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={handleDiscoverAllRelationships}
+                disabled={loading || isSyncing['discover_all'] || globalSyncLock}
+                className="w-full bg-purple-600 hover:bg-purple-700"
+              >
+                {isSyncing['discover_all'] || (syncProgress.isActive && syncProgress.operation === 'discover_all') ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Discovering All...
+                  </>
+                ) : (
+                  <>
+                    <Network className="mr-2 h-4 w-4" />
+                    Discover All
                   </>
                 )}
               </Button>
