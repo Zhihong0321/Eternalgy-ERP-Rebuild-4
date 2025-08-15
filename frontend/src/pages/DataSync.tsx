@@ -279,7 +279,7 @@ const DataSync = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Data Sync</h1>
           <p className="text-muted-foreground">
-            Control and monitor Bubble.io data synchronization
+            Control and monitor Bubble.io data synchronization • Now with SYNC+ and SCAN
           </p>
         </div>
         <Button

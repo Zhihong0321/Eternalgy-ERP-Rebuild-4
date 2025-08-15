@@ -12,6 +12,7 @@
     "dev": "node --watch src/server.js",
     "build": "cd frontend && npm ci && npm run build && cd .. && prisma generate",
     "postbuild": "echo 'Frontend built successfully' && ls -la frontend/dist/assets/",
+    "force-frontend": "cd frontend && rmdir /s /q dist 2>nul & rmdir /s /q node_modules\\.vite 2>nul & npm ci && npm run build && cd .. && git add . && echo 'Frontend rebuilt and staged'",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "deploy": "npm run build && git add frontend/dist/ && echo 'Frontend built and staged for commit'"
