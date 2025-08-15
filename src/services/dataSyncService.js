@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import BubbleService from './bubbleService.js';
+import PendingPatchService from './pendingPatchService.js';
 import { loggers } from '../utils/logger.js';
 
 const prisma = new PrismaClient();
@@ -15,6 +16,7 @@ class DataSyncService {
     this.logger = loggers.sync;
     this.prisma = prisma;
     this.schemaTypeCache = new Map(); // Cache for schema type detection
+    this.pendingPatchService = new PendingPatchService(); // For missing field handling
   }
 
   /**
@@ -434,6 +436,9 @@ class DataSyncService {
             recordId,
             error: recordError.message
           });
+
+          // Check if this is a missing column error and create pending request
+          await this.handleColumnError(recordError, tableName, runId);
 
           // Fail fast per project rules
           throw recordError;
@@ -1228,6 +1233,59 @@ class DataSyncService {
       this.schemaTypeCache.clear();
       this.logger.debug('Schema cache cleared for all tables', null, {
         operation: 'schema_cache_clear_all'
+      });
+    }
+  }
+
+  /**
+   * Handle column does not exist errors by creating pending patch requests
+   * SAFETY: Only creates requests, does not modify working sync logic
+   */
+  async handleColumnError(error, tableName, runId) {
+    try {
+      // Check if this is a "column does not exist" error (PostgreSQL error code 42703)
+      if (error.message && error.message.includes('column') && error.message.includes('does not exist')) {
+        this.logger.info('🔧 Detected missing column error - creating pending patch request', runId, {
+          operation: 'missing_column_detected',
+          table: tableName,
+          error: error.message,
+          action: 'creating_pending_request'
+        });
+
+        // Create pending patch request using the isolated service
+        const result = await this.pendingPatchService.createPendingRequest(
+          error.message,
+          runId,
+          { 
+            source: 'sync_service',
+            table: tableName,
+            originalError: error.message
+          }
+        );
+
+        if (result.success) {
+          this.logger.info('✅ Pending patch request created successfully', runId, {
+            operation: 'pending_request_created',
+            table: tableName,
+            requestId: result.request?.id,
+            userAction: 'Review at /api/pending-patches/list or frontend /pending-patches',
+            nextStep: 'User can approve the missing field addition'
+          });
+        } else {
+          this.logger.warn('⚠️ Failed to create pending patch request', runId, {
+            operation: 'pending_request_failed',
+            table: tableName,
+            error: result.error
+          });
+        }
+      }
+    } catch (patchError) {
+      // Don't let patch creation errors break the sync flow
+      this.logger.error('Patch service error (non-blocking)', runId, {
+        operation: 'patch_service_error',
+        table: tableName,
+        patchError: patchError.message,
+        originalError: error.message
       });
     }
   }
