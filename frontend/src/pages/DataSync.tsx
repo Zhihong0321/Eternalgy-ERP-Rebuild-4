@@ -15,6 +15,7 @@ import {
   Settings,
   RotateCcw,
   Network,
+  Search,
 } from 'lucide-react';
 import { useEternalgyAPI } from '@/hooks/useEternalgyAPI';
 import type { BubbleConnectionStatus, SyncTable } from '@/hooks/useEternalgyAPI';
@@ -26,6 +27,7 @@ const DataSync = () => {
     syncAllTables,
     syncTable,
     syncTableIncremental,
+    scanRecordCount,
     getSyncTables,
     wipeAllData,
     createTables,
@@ -45,6 +47,7 @@ const DataSync = () => {
   const [tableLimits, setTableLimits] = useState<Record<string, number>>({});
   const [isSyncing, setIsSyncing] = useState<Record<string, boolean>>({});
   const [progressTimer, setProgressTimer] = useState<NodeJS.Timeout | null>(null);
+  const [scannedTotals, setScannedTotals] = useState<Record<string, number>>({});
 
   const fetchSyncData = async () => {
     setIsRefreshing(true);
@@ -166,6 +169,22 @@ const DataSync = () => {
       }
     } finally {
       setIsSyncing(prev => ({ ...prev, [`${tableName}_plus`]: false }));
+    }
+  };
+
+  const handleScanRecordCount = async (tableName: string) => {
+    setIsSyncing(prev => ({ ...prev, [`${tableName}_scan`]: true }));
+    
+    try {
+      const result = await scanRecordCount(tableName);
+      if (result && result.totalRecords !== undefined) {
+        setScannedTotals(prev => ({
+          ...prev,
+          [tableName]: result.totalRecords
+        }));
+      }
+    } finally {
+      setIsSyncing(prev => ({ ...prev, [`${tableName}_scan`]: false }));
     }
   };
 
@@ -520,7 +539,9 @@ const DataSync = () => {
                     <div className="flex items-center space-x-3">
                       <span className="font-medium">{table.name || table.tablename}</span>
                       <Badge variant={table.withData ? "default" : "secondary"}>
-                        {table.recordCount} records
+                        {scannedTotals[table.tablename] 
+                          ? `${table.recordCount}/${scannedTotals[table.tablename]}` 
+                          : `${table.recordCount} records`}
                       </Badge>
                       {!table.withData && (
                         <Badge variant="outline" className="text-orange-600">
@@ -570,6 +591,23 @@ const DataSync = () => {
                         <>
                           <Zap className="mr-1 h-3 w-3" />
                           SYNC+
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={() => handleScanRecordCount(table.tablename)}
+                      disabled={loading || isSyncing[`${table.tablename}_scan`] || syncProgress.isActive}
+                      size="sm"
+                      variant="outline"
+                      className="w-20 border-orange-200 text-orange-600 hover:bg-orange-50"
+                      title="Scan total record count from Bubble API"
+                    >
+                      {isSyncing[`${table.tablename}_scan`] ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Search className="mr-1 h-3 w-3" />
+                          SCAN
                         </>
                       )}
                     </Button>

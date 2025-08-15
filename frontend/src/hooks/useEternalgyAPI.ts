@@ -118,6 +118,9 @@ export const useEternalgyAPI = () => {
     const queryString = queryParams.toString();
     return handleRequest(() => api.get(`/api/bubble/fetch/${dataType}${queryString ? `?${queryString}` : ''}`));
   };
+
+  const scanRecordCount = (tableName: string) =>
+    handleRequest(() => api.get(`/api/bubble/scan/${tableName}`));
     
   // Alias for compatibility
   const analyzeDataStructure = getDataStructure;
@@ -269,6 +272,7 @@ export const useEternalgyAPI = () => {
     // Bubble.io specific methods
     getBubbleDataTypes,
     getBubbleData,
+    scanRecordCount,
   };
 };
 

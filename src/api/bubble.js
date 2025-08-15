@@ -408,4 +408,61 @@ router.get('/analyze/:dataType', async (req, res) => {
   }
 });
 
+/**
+ * Scan total record count for specific data type
+ * GET /api/bubble/scan/{dataType}
+ * 
+ * Returns total record count with minimal API cost (1 API call, 1 record)
+ */
+router.get('/scan/:dataType', async (req, res) => {
+  const { dataType } = req.params;
+
+  try {
+    console.log(`🔍 SCAN requested for data type: ${dataType}`);
+    
+    if (!bubbleService) {
+      return res.status(500).json({
+        success: false,
+        error: 'BubbleService not initialized'
+      });
+    }
+    
+    const result = await bubbleService.scanRecordCount(dataType);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        endpoint: 'bubble_scan',
+        dataType: dataType,
+        totalRecords: result.totalRecords,
+        scanDetails: result.scanDetails,
+        apiCost: result.apiCost,
+        message: `✅ SCAN complete: ${dataType} has ${result.totalRecords} total records`,
+        timestamp: result.timestamp
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        endpoint: 'bubble_scan',
+        dataType: dataType,
+        error: result.error,
+        message: `❌ SCAN failed for ${dataType}`,
+        timestamp: result.timestamp
+      });
+    }
+
+  } catch (error) {
+    console.error(`❌ SCAN error for ${dataType}:`, error.message);
+    
+    res.status(500).json({
+      success: false,
+      endpoint: 'bubble_scan',
+      dataType: dataType,
+      error: error.message,
+      message: `❌ SCAN failed for ${dataType}`,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 export default router;

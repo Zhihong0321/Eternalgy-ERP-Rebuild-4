@@ -217,6 +217,54 @@ class BubbleService {
     }
   }
 
+  /**
+   * Scan total record count for a data type (minimal API cost)
+   * Uses limit=1, cursor=0 to get total count with just 1 record
+   */
+  async scanRecordCount(dataType) {
+    try {
+      const endpoint = `/api/1.1/obj/${dataType}`;
+      const response = await axios.get(`${this.baseUrl}${endpoint}`, {
+        headers: this.getHeaders(),
+        timeout: this.timeout,
+        params: {
+          limit: 1,    // Minimal cost - just 1 record
+          cursor: 0    // Start from beginning
+        }
+      });
+
+      const results = response.data?.response?.results || [];
+      const remaining = response.data?.response?.remaining || 0;
+      const currentCursor = response.data?.response?.cursor || 0;
+      
+      // Calculate total: cursor + current_batch + remaining
+      const totalRecords = currentCursor + results.length + remaining;
+
+      return {
+        success: true,
+        dataType,
+        totalRecords,
+        scanDetails: {
+          cursor: currentCursor,
+          currentBatch: results.length,
+          remaining: remaining,
+          calculation: `${currentCursor} + ${results.length} + ${remaining} = ${totalRecords}`
+        },
+        apiCost: 1, // Only 1 API call
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        dataType,
+        error: error.message,
+        status: error.response?.status,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
   // Analyze field patterns in fetched data (helper method)
   analyzeFields(records) {
     if (!records || records.length === 0) {
