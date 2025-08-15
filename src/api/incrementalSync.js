@@ -117,6 +117,50 @@ router.post('/table/:tableName/reset-cursor', async (req, res) => {
 });
 
 /**
+ * Set cursor to specific position
+ * POST /api/sync/table/{tableName}/set-cursor?position=3900
+ * 
+ * Sets cursor to specific position (useful when cursor gets out of sync with actual data)
+ */
+router.post('/table/:tableName/set-cursor', async (req, res) => {
+  const { tableName } = req.params;
+  const position = parseInt(req.query.position) || 0;
+
+  try {
+    if (!incrementalSyncService) {
+      return res.status(500).json({
+        success: false,
+        error: 'IncrementalSyncService not initialized'
+      });
+    }
+
+    const result = await incrementalSyncService.setCursor(tableName, position);
+
+    res.json({
+      success: true,
+      endpoint: 'set_cursor',
+      table: tableName,
+      position: position,
+      ...result,
+      message: `Cursor set to position ${position} for ${tableName}`,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error(`❌ Set cursor failed for ${tableName}:`, error.message);
+    
+    res.status(500).json({
+      success: false,
+      endpoint: 'set_cursor',
+      table: tableName,
+      position: position,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
  * Get all cursor positions
  * GET /api/sync/cursors
  * 

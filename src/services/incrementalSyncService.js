@@ -484,6 +484,34 @@ class IncrementalSyncService {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Set cursor to specific position (useful when cursor gets out of sync)
+   */
+  async setCursor(tableName, position, runId = null) {
+    try {
+      await this.ensureSyncCursorTable();
+      
+      await prisma.sync_cursors.upsert({
+        where: { table_name: tableName },
+        update: { 
+          last_cursor: position,
+          last_sync_at: new Date(),
+          sync_run_id: runId || `manual_set_${position}`
+        },
+        create: { 
+          table_name: tableName,
+          last_cursor: position,
+          last_sync_at: new Date(),
+          sync_run_id: runId || `manual_set_${position}`
+        }
+      });
+
+      return { success: true, message: `Cursor set to ${position} for table ${tableName}` };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 export default IncrementalSyncService;
