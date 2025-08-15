@@ -143,9 +143,11 @@ const DataSync = () => {
     setIsSyncing(prev => ({ ...prev, [tableName]: true }));
     
     try {
-      await syncTable(tableName, limit);
-      // FIXED: Don't refresh all tables after single table sync
-      // Single table sync should be isolated and not trigger database table scan
+      const result = await syncTable(tableName, limit);
+      // Refresh table data to update record counts after successful sync
+      if (result) {
+        setTimeout(fetchSyncData, 1500); // Refresh after 1.5 seconds to show updated counts
+      }
     } finally {
       setIsSyncing(prev => ({ ...prev, [tableName]: false }));
     }
