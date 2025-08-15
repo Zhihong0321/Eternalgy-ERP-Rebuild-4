@@ -410,12 +410,7 @@ class DataSyncService {
               action: upsertResult.action
             });
 
-            this.logger.debug('Record synced successfully', runId, {
-              operation: 'record_sync_success',
-              table: tableName,
-              recordId,
-              action: upsertResult.action
-            });
+            // Removed per-record debug logging to reduce volume
           } else {
             syncResult.skipped++;
             syncResult.details.push({
@@ -545,11 +540,7 @@ class DataSyncService {
    * CRITICAL: Converts ISO date strings to Date objects for TIMESTAMP columns
    */
   transformRecordWithTypes(record, tableName, runId) {
-    this.logger.debug('Starting record transformation with type conversion', runId, {
-      operation: 'record_transform_start',
-      table: tableName,
-      recordId: record._id
-    });
+    // Removed per-record transformation debug logging to reduce volume
 
     const transformed = {
       bubbleId: record._id || record.id // Map to Prisma field name
@@ -568,12 +559,7 @@ class DataSyncService {
       if (typeof value === 'string' && this.isDateString(value)) {
         try {
           transformed[prismaFieldName] = new Date(value);
-          this.logger.debug('Converted date string to Date object', runId, {
-            operation: 'date_conversion',
-            field: originalFieldName,
-            originalValue: value,
-            convertedValue: transformed[prismaFieldName].toISOString()
-          });
+          // Removed per-field debug logging to reduce volume
         } catch (dateError) {
           this.logger.warn('Date conversion failed, using string', runId, {
             operation: 'date_conversion_fallback',
@@ -602,12 +588,7 @@ class DataSyncService {
       }
     });
 
-    this.logger.debug('Record transformation completed', runId, {
-      operation: 'record_transform_complete',
-      table: tableName,
-      originalFields: Object.keys(record).length,
-      transformedFields: Object.keys(transformed).length
-    });
+    // Removed per-record completion debug logging to reduce volume
 
     return transformed;
   }

@@ -5,6 +5,12 @@ const prisma = new PrismaClient();
 /**
  * UDLS-Compliant Logger Service
  * Mandatory logging utility per project rules - all code must integrate this
+ * 
+ * LOG LEVEL FILTERING: Set LOG_LEVEL=INFO in production to reduce volume
+ * - ERROR: Only errors
+ * - WARN: Errors + warnings  
+ * - INFO: Errors + warnings + info (default)
+ * - DEBUG: All logs (development only)
  */
 class Logger {
   constructor(context = 'general') {
@@ -15,6 +21,15 @@ class Logger {
     this.batchTimeout = 30000; // 30 seconds
     this.pendingBatch = [];
     this.batchTimer = null;
+    
+    // Log level filtering for production (reduces volume)
+    this.logLevel = process.env.LOG_LEVEL || 'INFO';
+    this.logLevels = {
+      'ERROR': 0,
+      'WARN': 1, 
+      'INFO': 2,
+      'DEBUG': 3
+    };
   }
 
   /**
@@ -26,12 +41,23 @@ class Logger {
 
   /**
    * Core logging method - handles both runtime and historical logging
+   * Now includes log level filtering to reduce volume in production
    */
   async log(level, message, runId, metadata = {}) {
+    const levelUpper = level.toUpperCase();
+    
+    // Filter out logs below configured level (reduces volume)
+    const currentLevelNum = this.logLevels[this.logLevel] || 2;
+    const messageLevelNum = this.logLevels[levelUpper] || 3;
+    
+    if (messageLevelNum > currentLevelNum) {
+      return null; // Skip this log - below threshold
+    }
+
     const logEntry = {
       timestamp: new Date().toISOString(),
       runId: runId || this.generateRunId(),
-      level: level.toUpperCase(),
+      level: levelUpper,
       context: this.context,
       message,
       metadata: {
@@ -43,7 +69,7 @@ class Logger {
     // Add to runtime logs (in-memory)
     this.addToRuntimeLogs(logEntry);
 
-    // Add to historical batch (database)
+    // Add to historical batch (database) 
     this.addToHistoricalBatch(logEntry);
 
     // Console output for Railway logs

@@ -239,12 +239,7 @@ class IncrementalSyncService {
 
       const actualCount = parseInt(countResult[0].count) || 0;
 
-      this.logger.debug('🔍 Detected actual cursor from database', runId, {
-        operation: 'cursor_detection_count',
-        table: tableName,
-        actualCount,
-        method: 'database_record_count'
-      });
+      // Removed debug log to reduce volume - only log when cursor correction needed
 
       return actualCount;
 
@@ -321,13 +316,16 @@ class IncrementalSyncService {
         const batchLimit = Math.min(remainingLimit, 100);
         batchCount++;
 
-        this.logger.debug(`📡 Fetching batch ${batchCount}`, runId, {
-          operation: 'incremental_fetch_batch',
-          table: tableName,
-          batchLimit,
-          currentCursor,
-          remainingLimit
-        });
+        // Only log every 5th batch to reduce log volume
+        if (batchCount % 5 === 1 || batchCount === 1) {
+          this.logger.info(`📡 Fetching batches ${batchCount}+ (${batchLimit} records per batch)`, runId, {
+            operation: 'incremental_fetch_progress',
+            table: tableName,
+            batchCount,
+            currentCursor,
+            remainingLimit
+          });
+        }
 
         const bubbleCall = await this.bubbleService.fetchDataType(tableName, {
           limit: batchLimit,
@@ -466,12 +464,7 @@ class IncrementalSyncService {
               reason: 'Record already exists (incremental sync skips existing)'
             });
 
-            this.logger.debug('⚠️ SYNC+ skipped existing record', runId, {
-              operation: 'incremental_skip_existing',
-              table: tableName,
-              recordId,
-              reason: 'Record already synced'
-            });
+            // Removed per-record logging to reduce volume
             continue;
           }
 
@@ -486,12 +479,7 @@ class IncrementalSyncService {
               action: 'inserted_new'
             });
 
-            this.logger.debug('✅ SYNC+ inserted new record', runId, {
-              operation: 'incremental_insert_new',
-              table: tableName,
-              recordId,
-              action: 'truly_incremental'
-            });
+            // Removed per-record logging to reduce volume
           } else {
             syncResult.skipped++;
             syncResult.details.push({
