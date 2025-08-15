@@ -287,15 +287,16 @@ class IncrementalSyncService {
   }
 
   /**
-   * Sync records to database (reuse existing logic from DataSyncService)
-   * This maintains compatibility with existing schema mapping and error handling
+   * Sync records to database - TRULY INCREMENTAL (only INSERT new records)
+   * This is different from regular sync which does UPSERT
    */
   async syncRecordsToDatabase(tableName, records, runId) {
-    this.logger.info('💾 Starting incremental database sync', runId, {
+    this.logger.info('💾 Starting TRULY incremental database sync (INSERT only)', runId, {
       operation: 'incremental_database_sync_start',
       table: tableName,
       recordCount: records.length,
-      type: 'SYNC_PLUS'
+      type: 'SYNC_PLUS',
+      behavior: 'INSERT_ONLY_NEW_RECORDS'
     });
 
     const syncResult = {
@@ -306,28 +307,59 @@ class IncrementalSyncService {
     };
 
     try {
-      // Process each record individually (same as regular sync)
+      const safeTableName = tableName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+
+      // Process each record individually - INSERT only (not upsert)
       for (let i = 0; i < records.length; i++) {
         const record = records[i];
         const recordId = record._id || record.id || `record_${i}`;
 
         try {
-          // Use DataSyncService upsert logic for proper type handling and compatibility
-          const upsertResult = await this.dataSyncService.upsertRecordDirect(tableName, record, recordId, runId);
+          // Check if record already exists (skip if exists)
+          const existingRecord = await prisma.$queryRawUnsafe(`
+            SELECT bubble_id FROM "${safeTableName}" WHERE bubble_id = $1 LIMIT 1
+          `, recordId);
+
+          if (existingRecord && existingRecord.length > 0) {
+            syncResult.skipped++;
+            syncResult.details.push({
+              recordId,
+              status: 'skipped',
+              reason: 'Record already exists (incremental sync skips existing)'
+            });
+
+            this.logger.debug('⚠️ SYNC+ skipped existing record', runId, {
+              operation: 'incremental_skip_existing',
+              table: tableName,
+              recordId,
+              reason: 'Record already synced'
+            });
+            continue;
+          }
+
+          // INSERT new record only (use regular sync logic for proper formatting)
+          const insertResult = await this.dataSyncService.upsertRecordDirect(tableName, record, recordId, runId);
           
-          if (upsertResult.success) {
+          if (insertResult.success) {
             syncResult.synced++;
             syncResult.details.push({
               recordId,
               status: 'synced',
-              action: upsertResult.action
+              action: 'inserted_new'
+            });
+
+            this.logger.debug('✅ SYNC+ inserted new record', runId, {
+              operation: 'incremental_insert_new',
+              table: tableName,
+              recordId,
+              action: 'truly_incremental'
             });
           } else {
             syncResult.skipped++;
             syncResult.details.push({
               recordId,
               status: 'skipped',
-              reason: upsertResult.reason
+              reason: insertResult.reason || 'Insert failed'
             });
           }
 
@@ -352,14 +384,16 @@ class IncrementalSyncService {
         }
       }
 
-      this.logger.info('✅ Incremental database sync completed', runId, {
+      this.logger.info('✅ TRULY incremental database sync completed', runId, {
         operation: 'incremental_database_sync_complete',
         table: tableName,
         type: 'SYNC_PLUS',
+        behavior: 'INSERT_ONLY_NEW_RECORDS',
         totalRecords: records.length,
         synced: syncResult.synced,
         skipped: syncResult.skipped,
-        errors: syncResult.errors
+        errors: syncResult.errors,
+        explanation: 'Only NEW records were inserted, existing records were skipped'
       });
 
       return syncResult;
