@@ -68,6 +68,49 @@ export const useEternalgyAPI = () => {
     operation: ''
   });
 
+  // Global sync lock to prevent multiple simultaneous operations
+  const [globalSyncLock, setGlobalSyncLock] = useState(false);
+
+  // Helper to wrap sync operations with global lock
+  const withSyncLock = async <T>(
+    operation: string,
+    message: string,
+    syncFn: () => Promise<T | null>
+  ): Promise<T | null> => {
+    if (globalSyncLock) {
+      setError('Another sync operation is already running. Please wait for it to complete.');
+      return null;
+    }
+
+    setGlobalSyncLock(true);
+    setSyncProgress({
+      isActive: true,
+      message,
+      operation,
+      startTime: Date.now()
+    });
+
+    try {
+      const result = await syncFn();
+      setSyncProgress({
+        isActive: false,
+        message: result ? `${operation} completed!` : `${operation} failed`,
+        operation
+      });
+      return result;
+    } catch (error: any) {
+      setSyncProgress({
+        isActive: false,
+        message: `${operation} failed: ${error.message || error}`,
+        operation
+      });
+      setError(`${operation} failed: ${error.message || error}`);
+      return null;
+    } finally {
+      setGlobalSyncLock(false);
+    }
+  };
+
   const handleRequest = async <T>(
     requestFn: () => Promise<AxiosResponse<T>>
   ): Promise<T | null> => {
@@ -129,81 +172,27 @@ export const useEternalgyAPI = () => {
   
   // Enhanced sync operations with progress tracking
   const syncAllTables = async (globalLimit: number = 3) => {
-    setSyncProgress({
-      isActive: true,
-      message: `Starting batch sync of all tables (limit: ${globalLimit})...`,
-      operation: 'batch_sync',
-      startTime: Date.now()
-    });
-    
-    try {
-      const result = await handleRequest(() => api.post(`/api/sync/batch?globalLimit=${globalLimit}`));
-      setSyncProgress({
-        isActive: false,
-        message: result ? 'Batch sync completed successfully!' : 'Batch sync failed',
-        operation: 'batch_sync'
-      });
-      return result;
-    } catch (error) {
-      setSyncProgress({
-        isActive: false,
-        message: `Batch sync failed: ${error}`,
-        operation: 'batch_sync'
-      });
-      throw error;
-    }
+    return await withSyncLock(
+      'batch_sync',
+      `Starting batch sync of all tables (limit: ${globalLimit})...`,
+      () => handleRequest(() => api.post(`/api/sync/batch?globalLimit=${globalLimit}`))
+    );
   };
   
   const syncTable = async (tableName: string, limit: number = 3) => {
-    setSyncProgress({
-      isActive: true,
-      message: `Syncing ${tableName} table (${limit} records)...`,
-      operation: `sync_${tableName}`,
-      startTime: Date.now()
-    });
-    
-    try {
-      const result = await handleRequest(() => api.post(`/api/sync/table/${tableName}?limit=${limit}`));
-      setSyncProgress({
-        isActive: false,
-        message: result ? `${tableName} sync completed!` : `${tableName} sync failed`,
-        operation: `sync_${tableName}`
-      });
-      return result;
-    } catch (error) {
-      setSyncProgress({
-        isActive: false,
-        message: `${tableName} sync failed: ${error}`,
-        operation: `sync_${tableName}`
-      });
-      throw error;
-    }
+    return await withSyncLock(
+      `sync_${tableName}`,
+      `Syncing ${tableName} table (${limit} records)...`,
+      () => handleRequest(() => api.post(`/api/sync/table/${tableName}?limit=${limit}`))
+    );
   };
 
   const syncTableIncremental = async (tableName: string, limit: number = 100) => {
-    setSyncProgress({
-      isActive: true,
-      message: `SYNC+ ${tableName} (${limit} new records)...`,
-      operation: `sync_plus_${tableName}`,
-      startTime: Date.now()
-    });
-    
-    try {
-      const result = await handleRequest(() => api.post(`/api/sync/table/${tableName}/plus?limit=${limit}`));
-      setSyncProgress({
-        isActive: false,
-        message: result ? `${tableName} SYNC+ completed!` : `${tableName} SYNC+ failed`,
-        operation: `sync_plus_${tableName}`
-      });
-      return result;
-    } catch (error) {
-      setSyncProgress({
-        isActive: false,
-        message: `${tableName} SYNC+ failed: ${error}`,
-        operation: `sync_plus_${tableName}`
-      });
-      throw error;
-    }
+    return await withSyncLock(
+      `sync_plus_${tableName}`,
+      `SYNC+ ${tableName} (${limit} new records)...`,
+      () => handleRequest(() => api.post(`/api/sync/table/${tableName}/plus?limit=${limit}`))
+    );
   };
   
   const getSyncTables = () => handleRequest(() => api.get('/api/database/tables'));
@@ -254,6 +243,7 @@ export const useEternalgyAPI = () => {
     loading,
     error,
     syncProgress,
+    globalSyncLock,
     checkHealth,
     getDataTypes,
     getData,

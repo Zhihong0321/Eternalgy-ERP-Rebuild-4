@@ -78,7 +78,7 @@ class IncrementalSyncService {
       const syncResult = await this.syncRecordsToDatabase(tableName, records, runId);
 
       // Step 4: Update cursor position after successful sync
-      const newCursor = lastCursor + records.length;
+      const newCursor = lastCursor + syncResult.synced; // Only count actually synced records
       await this.updateLastCursor(tableName, newCursor, runId);
 
       // Step 5: Complete sync logging
@@ -204,6 +204,7 @@ class IncrementalSyncService {
 
   /**
    * Fetch incremental data from Bubble starting from specific cursor
+   * Handles large limits by making multiple API calls
    */
   async fetchIncrementalData(tableName, startCursor, limit, runId) {
     this.logger.info('📡 Fetching incremental data from Bubble', runId, {
@@ -215,35 +216,77 @@ class IncrementalSyncService {
     });
 
     try {
-      const bubbleCall = await this.bubbleService.fetchDataType(tableName, {
-        limit: Math.min(limit, 100), // Bubble max is 100 per call
-        cursor: startCursor,
-        includeEmpty: false
-      });
+      const allRecords = [];
+      let currentCursor = startCursor;
+      let remainingLimit = limit;
+      let batchCount = 0;
 
-      if (!bubbleCall.success) {
-        return {
-          success: false,
-          error: `Bubble API error: ${bubbleCall.error}`
-        };
+      // Fetch in batches of 100 (Bubble API limit) until we reach requested limit
+      while (remainingLimit > 0) {
+        const batchLimit = Math.min(remainingLimit, 100);
+        batchCount++;
+
+        this.logger.debug(`📡 Fetching batch ${batchCount}`, runId, {
+          operation: 'incremental_fetch_batch',
+          table: tableName,
+          batchLimit,
+          currentCursor,
+          remainingLimit
+        });
+
+        const bubbleCall = await this.bubbleService.fetchDataType(tableName, {
+          limit: batchLimit,
+          cursor: currentCursor,
+          includeEmpty: false
+        });
+
+        if (!bubbleCall.success) {
+          return {
+            success: false,
+            error: `Bubble API error in batch ${batchCount}: ${bubbleCall.error}`
+          };
+        }
+
+        const batchRecords = bubbleCall.records || [];
+        allRecords.push(...batchRecords);
+        
+        // Update cursor and remaining limit
+        currentCursor += batchRecords.length;
+        remainingLimit -= batchRecords.length;
+
+        // If we got fewer records than requested in this batch, we've reached the end
+        if (batchRecords.length < batchLimit) {
+          this.logger.info(`📡 Reached end of data in batch ${batchCount}`, runId, {
+            operation: 'incremental_fetch_end_reached',
+            table: tableName,
+            batchRecords: batchRecords.length,
+            totalFetched: allRecords.length
+          });
+          break;
+        }
+
+        // Rate limiting between batches
+        if (batchCount > 1) {
+          await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
+        }
       }
-
-      const records = bubbleCall.records || [];
       
       this.logger.info('📡 Incremental fetch completed', runId, {
         operation: 'incremental_fetch_complete',
         table: tableName,
         startCursor,
-        recordsFetched: records.length,
-        hasMore: bubbleCall.pagination?.hasMore,
-        remaining: bubbleCall.pagination?.remaining
+        requestedLimit: limit,
+        recordsFetched: allRecords.length,
+        batchCount,
+        finalCursor: currentCursor
       });
 
       return {
         success: true,
-        records: records,
+        records: allRecords,
         cursor: startCursor,
-        pagination: bubbleCall.pagination
+        finalCursor: currentCursor,
+        batchCount
       };
 
     } catch (error) {

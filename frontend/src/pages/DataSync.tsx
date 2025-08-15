@@ -36,7 +36,8 @@ const DataSync = () => {
     getRelationshipStatus,
     loading,
     error,
-    syncProgress
+    syncProgress,
+    globalSyncLock
   } = useEternalgyAPI();
   
   const [connectionStatus, setConnectionStatus] = useState<BubbleConnectionStatus | null>(null);
@@ -300,18 +301,29 @@ const DataSync = () => {
         </Alert>
       )}
 
-      {/* Sync Progress Display */}
-      {syncProgress.isActive && (
+      {/* Enhanced Sync Progress Display */}
+      {(syncProgress.isActive || globalSyncLock) && (
         <Alert className="border-blue-200 bg-blue-50">
           <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
           <AlertDescription className="text-blue-800">
             <div className="flex items-center justify-between">
-              <span>{syncProgress.message}</span>
-              {syncProgress.startTime && (
-                <span className="text-sm text-blue-600 ml-4">
-                  {Math.floor((Date.now() - syncProgress.startTime) / 1000)}s
-                </span>
-              )}
+              <div className="flex items-center space-x-3">
+                <span className="font-semibold">🔒 SYNC OPERATION ACTIVE</span>
+                <span>{syncProgress.message}</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                {syncProgress.startTime && (
+                  <span className="text-sm text-blue-600 font-mono">
+                    {Math.floor((Date.now() - syncProgress.startTime) / 1000)}s
+                  </span>
+                )}
+                <Badge className="bg-orange-500 text-white animate-pulse">
+                  All buttons disabled
+                </Badge>
+              </div>
+            </div>
+            <div className="mt-2 text-sm text-blue-700">
+              ⚠️ Please wait for the current operation to complete before starting another sync operation.
             </div>
           </AlertDescription>
         </Alert>
@@ -481,7 +493,7 @@ const DataSync = () => {
               </div>
               <Button
                 onClick={handleSyncAllTables}
-                disabled={loading || isSyncing['all'] || syncProgress.isActive}
+                disabled={loading || isSyncing['all'] || globalSyncLock}
                 className="w-full"
               >
                 {isSyncing['all'] || (syncProgress.isActive && syncProgress.operation === 'batch_sync') ? (
@@ -560,11 +572,11 @@ const DataSync = () => {
                       className="w-16 text-center"
                       min="1"
                       max="99999"
-                      disabled={isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || isSyncing[`discover_${table.tablename}`]}
+                      disabled={isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || isSyncing[`discover_${table.tablename}`] || globalSyncLock}
                     />
                     <Button
                       onClick={() => handleSyncTable(table.tablename)}
-                      disabled={loading || isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || isSyncing[`discover_${table.tablename}`] || syncProgress.isActive}
+                      disabled={loading || isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || isSyncing[`discover_${table.tablename}`] || globalSyncLock}
                       size="sm"
                       className="w-20"
                     >
@@ -579,7 +591,7 @@ const DataSync = () => {
                     </Button>
                     <Button
                       onClick={() => handleSyncTableIncremental(table.tablename)}
-                      disabled={loading || isSyncing[`${table.tablename}_plus`] || isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || isSyncing[`discover_${table.tablename}`] || syncProgress.isActive}
+                      disabled={loading || isSyncing[`${table.tablename}_plus`] || isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || isSyncing[`discover_${table.tablename}`] || globalSyncLock}
                       size="sm"
                       variant="outline"
                       className="w-20 border-green-200 text-green-600 hover:bg-green-50 font-semibold"
@@ -596,7 +608,7 @@ const DataSync = () => {
                     </Button>
                     <Button
                       onClick={() => handleScanRecordCount(table.tablename)}
-                      disabled={loading || isSyncing[`${table.tablename}_scan`] || syncProgress.isActive}
+                      disabled={loading || isSyncing[`${table.tablename}_scan`] || globalSyncLock}
                       size="sm"
                       variant="outline"
                       className="w-20 border-orange-200 text-orange-600 hover:bg-orange-50"
@@ -613,7 +625,7 @@ const DataSync = () => {
                     </Button>
                     <Button
                       onClick={() => handleDiscoverRelationships(table.tablename)}
-                      disabled={loading || isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || isSyncing[`discover_${table.tablename}`] || syncProgress.isActive}
+                      disabled={loading || isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || isSyncing[`discover_${table.tablename}`] || globalSyncLock}
                       size="sm"
                       variant="outline"
                       className="w-24 border-blue-200 text-blue-600 hover:bg-blue-50"
@@ -629,7 +641,7 @@ const DataSync = () => {
                     </Button>
                     <Button
                       onClick={() => handleRecreateTable(table.tablename)}
-                      disabled={loading || isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || isSyncing[`discover_${table.tablename}`] || syncProgress.isActive}
+                      disabled={loading || isSyncing[table.tablename] || isSyncing[`recreate_${table.tablename}`] || isSyncing[`discover_${table.tablename}`] || globalSyncLock}
                       size="sm"
                       variant="outline"
                       className="w-24 border-orange-200 text-orange-600 hover:bg-orange-50"
