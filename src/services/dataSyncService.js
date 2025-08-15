@@ -105,6 +105,9 @@ class DataSyncService {
         duration
       });
 
+      // Check if this is a missing column error and create pending request
+      await this.handleColumnError(error, tableName, runId);
+
       // Fail fast per project rules
       throw error;
     }
@@ -463,6 +466,9 @@ class DataSyncService {
         error: error.message,
         partialResults: syncResult
       });
+
+      // Check if this is a missing column error and create pending request
+      await this.handleColumnError(error, tableName, runId);
 
       throw error;
     }
@@ -1243,6 +1249,15 @@ class DataSyncService {
    */
   async handleColumnError(error, tableName, runId) {
     try {
+      this.logger.info('🔍 Checking error for column issue', runId, {
+        operation: 'error_check_start',
+        table: tableName,
+        errorMessage: error.message,
+        errorType: typeof error.message,
+        hasColumnText: error.message?.includes('column'),
+        hasDoesNotExistText: error.message?.includes('does not exist')
+      });
+
       // Check if this is a "column does not exist" error (PostgreSQL error code 42703)
       if (error.message && error.message.includes('column') && error.message.includes('does not exist')) {
         this.logger.info('🔧 Detected missing column error - creating pending patch request', runId, {
