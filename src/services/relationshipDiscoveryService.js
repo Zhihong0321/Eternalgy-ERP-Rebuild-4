@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma.js';
 import { loggers } from '../utils/logger.js';
-
-const prisma = new PrismaClient();
 
 class RelationshipDiscoveryService {
   constructor() {

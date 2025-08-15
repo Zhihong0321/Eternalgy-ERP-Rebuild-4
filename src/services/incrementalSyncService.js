@@ -1,10 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma.js';
 import BubbleService from './bubbleService.js';
 import PendingPatchService from './pendingPatchService.js';
 import DataSyncService from './dataSyncService.js';
 import { loggers } from '../utils/logger.js';
-
-const prisma = new PrismaClient();
 
 /**
  * Incremental Sync Service (SYNC+)

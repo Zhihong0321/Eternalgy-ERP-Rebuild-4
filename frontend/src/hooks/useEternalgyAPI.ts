@@ -239,6 +239,9 @@ export const useEternalgyAPI = () => {
   const getRelationshipStatus = (tableName: string) => 
     handleRequest(() => api.get(`/api/sync/relationship-status/${tableName}`));
 
+  const getAllRelationshipStatuses = () => 
+    handleRequest(() => api.get('/api/sync/relationship-statuses'));
+
   const discoverAllRelationships = async () => {
     return await withSyncLock(
       'discover_all',
@@ -268,6 +271,7 @@ export const useEternalgyAPI = () => {
     discoverRelationships,
     discoverAllRelationships,
     getRelationshipStatus,
+    getAllRelationshipStatuses,
     // Bubble.io specific methods
     getBubbleDataTypes,
     getBubbleData,

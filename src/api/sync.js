@@ -693,6 +693,83 @@ router.post('/discover-all', async (req, res) => {
   }
 });
 
+// GET /api/sync/relationship-statuses - Get relationship discovery status for ALL tables (bulk)
+router.get('/relationship-statuses', async (req, res) => {
+  const runId = logger.generateRunId();
+  const startTime = Date.now();
+  
+  logger.info('API request: Get all relationship statuses (bulk)', runId, {
+    operation: 'api_request',
+    endpoint: '/api/sync/relationship-statuses'
+  });
+
+  try {
+    // Get all tables that exist
+    const tablesResult = await batchSyncService.getAvailableTables(runId, {
+      onlyWithData: false
+    });
+
+    if (!tablesResult.success) {
+      throw new Error('Failed to get available tables');
+    }
+
+    const tables = tablesResult.data.tables || [];
+    const statuses = {};
+
+    // Get relationship status for each table
+    for (const table of tables) {
+      try {
+        const statusResult = await relationshipDiscoveryService.getTableRelationshipStatus(table.name, runId);
+        if (statusResult && statusResult.success) {
+          statuses[table.name] = statusResult.summary;
+        } else {
+          statuses[table.name] = null;
+        }
+      } catch (error) {
+        console.warn(`Failed to get relationship status for ${table.name}:`, error.message);
+        statuses[table.name] = null;
+      }
+    }
+
+    const duration = Date.now() - startTime;
+
+    logger.info('API response: All relationship statuses retrieved', runId, {
+      operation: 'api_response',
+      endpoint: '/api/sync/relationship-statuses',
+      status: 200,
+      tableCount: tables.length,
+      duration
+    });
+
+    res.json({
+      success: true,
+      endpoint: 'relationship_statuses_bulk',
+      tables: tables.length,
+      statuses: statuses,
+      duration,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    
+    logger.error('API error: Get all relationship statuses failed', runId, {
+      operation: 'api_error',
+      endpoint: '/api/sync/relationship-statuses',
+      error: error.message,
+      duration
+    });
+
+    res.status(500).json({
+      success: false,
+      endpoint: 'relationship_statuses_bulk',
+      error: error.message,
+      duration,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // GET /api/sync/relationship-status/:tableName - Get relationship discovery status for a table
 router.get('/relationship-status/:tableName', async (req, res) => {
   const runId = logger.generateRunId();

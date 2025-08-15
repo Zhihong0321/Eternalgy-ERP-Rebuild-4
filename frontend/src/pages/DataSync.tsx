@@ -35,6 +35,7 @@ const DataSync = () => {
     discoverRelationships,
     discoverAllRelationships,
     getRelationshipStatus,
+    getAllRelationshipStatuses,
     loading,
     error,
     syncProgress,
@@ -73,23 +74,22 @@ const DataSync = () => {
     if (tablesData && tablesData.tables) {
       const tables = tablesData.tables;
       
-      // Load relationship status for each table from database
-      const tablesWithStatus = await Promise.all(
-        tables.map(async (table: any) => {
-          try {
-            const statusResult = await getRelationshipStatus(table.tablename);
-            return {
-              ...table,
-              relationshipStatus: statusResult?.result?.summary || null
-            };
-          } catch (error) {
-            // If status fetch fails, just return table without status
-            return table;
-          }
-        })
-      );
-      
-      setSyncTables(tablesWithStatus);
+      // OPTIMIZED: Use bulk endpoint to get all relationship statuses at once
+      try {
+        const allStatusesResult = await getAllRelationshipStatuses();
+        const statusMap = allStatusesResult?.statuses || {};
+        
+        // Map relationship statuses to tables
+        const tablesWithStatus = tables.map((table: any) => ({
+          ...table,
+          relationshipStatus: statusMap[table.tablename] || null
+        }));
+        
+        setSyncTables(tablesWithStatus);
+      } catch (error) {
+        console.warn('Failed to load bulk relationship statuses, loading tables without status:', error);
+        setSyncTables(tables);
+      }
       
       // Initialize table limits with default value 3
       const initialLimits: Record<string, number> = {};
