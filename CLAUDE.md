@@ -67,6 +67,7 @@ npm run preview
 
 ### Key Design Principles
 
+- **Railway-Only Development**: This project can ONLY run/deploy/test on Railway Server. No localhost testing allowed.
 - **Railway-First Development**: All development, testing, and deployment on Railway.app only
 - **Dynamic Discovery**: NO hardcoded table/field names - everything discovered from Bubble API
 - **Unidirectional Sync**: Data flows ONLY Bubble → PostgreSQL, never back

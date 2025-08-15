@@ -30,3 +30,21 @@ model synced_records {
   @@index([bubble_id])
   @@index([data_type])
 }
+
+model pending_schema_patches {
+  id                  Int       @id @default(autoincrement())
+  table_name          String
+  field_name          String
+  original_field_name String?
+  suggested_type      String
+  error_message       String?
+  status              String    @default("pending")
+  created_at          DateTime  @default(now())
+  approved_at         DateTime?
+  approved_by         String?
+  executed_at         DateTime?
+  execution_result    String?
+  sync_run_id         String?
+
+  @@unique([table_name, field_name])
+}
