@@ -161,10 +161,10 @@ router.post('/table/:tableName/set-cursor', async (req, res) => {
 });
 
 /**
- * Get all cursor positions
+ * Get all cursor positions with ROBUST detection
  * GET /api/sync/cursors
  * 
- * Shows cursor positions for all tables (useful for debugging)
+ * Shows cursor positions vs actual database counts (useful for debugging)
  */
 router.get('/cursors', async (req, res) => {
   try {
@@ -186,12 +186,41 @@ router.get('/cursors', async (req, res) => {
       orderBy: { table_name: 'asc' }
     });
 
+    // Add robust detection for each cursor
+    const enhancedCursors = [];
+    for (const cursor of cursors) {
+      try {
+        const actualCursor = await incrementalSyncService.detectActualCursor(cursor.table_name, 'cursor_check');
+        const isAligned = cursor.last_cursor === actualCursor;
+        
+        enhancedCursors.push({
+          ...cursor,
+          actualRecordCount: actualCursor,
+          isAligned,
+          status: isAligned ? 'aligned' : 'misaligned',
+          difference: actualCursor - cursor.last_cursor
+        });
+      } catch (error) {
+        enhancedCursors.push({
+          ...cursor,
+          actualRecordCount: null,
+          isAligned: false,
+          status: 'error',
+          error: error.message
+        });
+      }
+    }
+
+    const misalignedCount = enhancedCursors.filter(c => !c.isAligned).length;
+
     res.json({
       success: true,
-      endpoint: 'get_cursors',
-      cursors: cursors,
+      endpoint: 'get_cursors_robust',
+      cursors: enhancedCursors,
       count: cursors.length,
-      message: `Found ${cursors.length} cursor records`,
+      misalignedCount,
+      message: `Found ${cursors.length} cursor records, ${misalignedCount} misaligned`,
+      selfCorrection: 'Cursors will auto-correct on next SYNC+ operation',
       timestamp: new Date().toISOString()
     });
 
@@ -200,7 +229,7 @@ router.get('/cursors', async (req, res) => {
     
     res.status(500).json({
       success: false,
-      endpoint: 'get_cursors',
+      endpoint: 'get_cursors_robust',
       error: error.message,
       timestamp: new Date().toISOString()
     });

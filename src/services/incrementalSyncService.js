@@ -77,14 +77,35 @@ class IncrementalSyncService {
       // Step 3: Process and sync new records to database
       const syncResult = await this.syncRecordsToDatabase(tableName, records, runId);
 
-      // Step 4: Update cursor position after successful sync
-      const newCursor = lastCursor + syncResult.synced; // Only count actually synced records
-      await this.updateLastCursor(tableName, newCursor, runId);
+      // Step 4: Update cursor position ONLY if sync was successful and no errors
+      if (syncResult.errors === 0) {
+        // Only update cursor if ALL records synced successfully
+        const newCursor = lastCursor + syncResult.synced;
+        await this.updateLastCursor(tableName, newCursor, runId);
+        
+        this.logger.info('✅ Cursor updated after successful sync', runId, {
+          operation: 'cursor_update_success',
+          table: tableName,
+          syncedRecords: syncResult.synced,
+          newCursor,
+          reason: 'all_records_synced_successfully'
+        });
+      } else {
+        // Don't update cursor if there were errors - keep it at current position
+        this.logger.warn('⚠️ Cursor NOT updated due to sync errors', runId, {
+          operation: 'cursor_update_skipped',
+          table: tableName,
+          errors: syncResult.errors,
+          cursor: lastCursor,
+          reason: 'sync_had_errors_cursor_preserved'
+        });
+      }
 
       // Step 5: Complete sync logging
       const totalDuration = Date.now() - startTime;
+      const finalCursor = syncResult.errors === 0 ? lastCursor + syncResult.synced : lastCursor;
       
-      this.logger.info('✅ SYNC+ incremental sync completed successfully', runId, {
+      this.logger.info('✅ SYNC+ incremental sync completed', runId, {
         operation: 'incremental_sync_complete',
         table: tableName,
         type: 'SYNC_PLUS',
@@ -93,7 +114,8 @@ class IncrementalSyncService {
         skipped: syncResult.skipped,
         errors: syncResult.errors,
         previousCursor: lastCursor,
-        newCursor: newCursor,
+        finalCursor: finalCursor,
+        cursorUpdated: syncResult.errors === 0,
         duration: totalDuration
       });
 
@@ -106,7 +128,8 @@ class IncrementalSyncService {
         skipped: syncResult.skipped,
         errors: syncResult.errors,
         previousCursor: lastCursor,
-        newCursor: newCursor,
+        newCursor: finalCursor,
+        cursorUpdated: syncResult.errors === 0,
         duration: totalDuration,
         details: syncResult.details
       };
@@ -131,34 +154,106 @@ class IncrementalSyncService {
   }
 
   /**
-   * Get last cursor position for a table
+   * Get ROBUST cursor position by checking actual database state
+   * Runs before every sync to self-correct cursor position
    */
   async getLastCursor(tableName, runId) {
     try {
       // Ensure sync cursor tracking table exists
       await this.ensureSyncCursorTable();
 
+      // STEP 1: Get stored cursor position
       const cursorRecord = await prisma.sync_cursors.findUnique({
         where: { table_name: tableName }
       });
+      const storedCursor = cursorRecord?.last_cursor || 0;
 
-      const lastCursor = cursorRecord?.last_cursor || 0;
-      
-      this.logger.info('📍 Retrieved last cursor position', runId, {
-        operation: 'cursor_retrieved',
+      // STEP 2: Get ACTUAL record count from database (ROBUST DETECTION)
+      const actualCursor = await this.detectActualCursor(tableName, runId);
+
+      // STEP 3: Compare and self-correct if needed
+      if (actualCursor !== storedCursor) {
+        this.logger.warn('🔧 CURSOR MISMATCH DETECTED - Auto-correcting', runId, {
+          operation: 'cursor_self_correction',
+          table: tableName,
+          storedCursor,
+          actualCursor,
+          action: 'correcting_to_actual_count'
+        });
+
+        // Auto-correct the cursor to match actual database state
+        await this.updateLastCursor(tableName, actualCursor, runId);
+        
+        return actualCursor;
+      }
+
+      this.logger.info('📍 Cursor verified and correct', runId, {
+        operation: 'cursor_verified',
         table: tableName,
-        lastCursor,
-        hasRecord: !!cursorRecord
+        cursor: actualCursor,
+        status: 'aligned_with_database'
       });
 
-      return lastCursor;
+      return actualCursor;
 
     } catch (error) {
-      this.logger.warn('⚠️ Failed to get cursor, starting from 0', runId, {
-        operation: 'cursor_retrieval_failed',
+      this.logger.warn('⚠️ Failed cursor detection, starting from 0', runId, {
+        operation: 'cursor_detection_failed',
         table: tableName,
         error: error.message,
         fallback: 'Starting from cursor 0'
+      });
+      return 0;
+    }
+  }
+
+  /**
+   * Detect actual cursor position by counting records in database
+   * This is the ROBUST detection method that self-corrects
+   */
+  async detectActualCursor(tableName, runId) {
+    try {
+      const safeTableName = tableName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+      
+      // Check if table exists first
+      const tableExists = await prisma.$queryRawUnsafe(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_name = $1
+        )
+      `, safeTableName);
+
+      if (!tableExists[0].exists) {
+        this.logger.info('📍 Table does not exist - cursor is 0', runId, {
+          operation: 'cursor_detection_no_table',
+          table: tableName,
+          actualCursor: 0
+        });
+        return 0;
+      }
+
+      // Count actual records in the table (robust detection)
+      const countResult = await prisma.$queryRawUnsafe(`
+        SELECT COUNT(*) as count FROM "${safeTableName}"
+      `);
+
+      const actualCount = parseInt(countResult[0].count) || 0;
+
+      this.logger.debug('🔍 Detected actual cursor from database', runId, {
+        operation: 'cursor_detection_count',
+        table: tableName,
+        actualCount,
+        method: 'database_record_count'
+      });
+
+      return actualCount;
+
+    } catch (error) {
+      this.logger.error('❌ Failed to detect actual cursor', runId, {
+        operation: 'cursor_detection_error',
+        table: tableName,
+        error: error.message,
+        fallback: 'Returning 0'
       });
       return 0;
     }
@@ -414,16 +509,19 @@ class IncrementalSyncService {
             error: recordError.message
           });
 
-          this.logger.error('❌ Incremental record sync failed', runId, {
+          this.logger.error('❌ Incremental record sync failed - continuing with other records', runId, {
             operation: 'incremental_record_sync_error',
             table: tableName,
             recordId,
-            error: recordError.message
+            error: recordError.message,
+            action: 'continuing_with_remaining_records'
           });
 
-          // Handle column errors (same as regular sync)
+          // Handle column errors (same as regular sync) but don't throw
           await this.handleColumnError(recordError, tableName, runId);
-          throw recordError;
+          
+          // DON'T throw - continue processing other records
+          // The error count will prevent cursor update
         }
       }
 
@@ -451,7 +549,9 @@ class IncrementalSyncService {
       });
 
       await this.handleColumnError(error, tableName, runId);
-      throw error;
+      
+      // Return partial results instead of throwing
+      return syncResult;
     }
   }
 
