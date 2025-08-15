@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import BubbleService from './bubbleService.js';
 import PendingPatchService from './pendingPatchService.js';
+import DataSyncService from './dataSyncService.js';
 import { loggers } from '../utils/logger.js';
 
 const prisma = new PrismaClient();
@@ -23,6 +24,7 @@ class IncrementalSyncService {
     this.logger = loggers.sync;
     this.prisma = prisma;
     this.pendingPatchService = new PendingPatchService();
+    this.dataSyncService = new DataSyncService(); // Use regular sync logic for proper type handling
   }
 
   /**
@@ -310,8 +312,8 @@ class IncrementalSyncService {
         const recordId = record._id || record.id || `record_${i}`;
 
         try {
-          // Use same upsert logic as regular sync for compatibility
-          const upsertResult = await this.upsertRecordDirect(tableName, record, recordId, runId);
+          // Use DataSyncService upsert logic for proper type handling and compatibility
+          const upsertResult = await this.dataSyncService.upsertRecordDirect(tableName, record, recordId, runId);
           
           if (upsertResult.success) {
             syncResult.synced++;
@@ -376,87 +378,7 @@ class IncrementalSyncService {
     }
   }
 
-  /**
-   * Reuse existing upsert logic for compatibility
-   * TODO: Import this from DataSyncService to avoid duplication
-   */
-  async upsertRecordDirect(tableName, bubbleRecord, recordId, runId) {
-    // For now, delegate to a simplified version
-    // In production, we'd import this from DataSyncService
-    const safeTableName = tableName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-    const bubbleId = bubbleRecord._id || bubbleRecord.id;
-    
-    if (!bubbleId) {
-      throw new Error('Record missing required _id field');
-    }
-
-    try {
-      // Simplified upsert - convert Bubble record to database record
-      const dbRecord = { bubble_id: bubbleId };
-      
-      // Convert Bubble fields to snake_case (same logic as regular sync)
-      Object.keys(bubbleRecord).forEach(key => {
-        if (key === '_id') return;
-        
-        const snakeKey = key
-          .replace(/[^a-zA-Z0-9]/g, '_')
-          .replace(/_+/g, '_')
-          .toLowerCase()
-          .replace(/^_|_$/g, '');
-        
-        dbRecord[snakeKey] = bubbleRecord[key];
-      });
-
-      // Check if record exists
-      const existing = await this.prisma.$queryRawUnsafe(
-        `SELECT "bubble_id" FROM "${safeTableName}" WHERE "bubble_id" = $1 LIMIT 1`,
-        bubbleId
-      );
-
-      if (existing.length > 0) {
-        // Update existing
-        const updateFields = Object.keys(dbRecord)
-          .filter(key => key !== 'bubble_id')
-          .map((key, index) => `"${key}" = $${index + 2}`)
-          .join(', ');
-
-        if (updateFields) {
-          const updateValues = Object.keys(dbRecord)
-            .filter(key => key !== 'bubble_id')
-            .map(key => dbRecord[key]);
-
-          await this.prisma.$queryRawUnsafe(
-            `UPDATE "${safeTableName}" SET ${updateFields} WHERE "bubble_id" = $1`,
-            bubbleId,
-            ...updateValues
-          );
-        }
-
-        return { success: true, action: 'updated' };
-      } else {
-        // Insert new
-        const fields = Object.keys(dbRecord).map(key => `"${key}"`).join(', ');
-        const placeholders = Object.keys(dbRecord).map((_, index) => `$${index + 1}`).join(', ');
-        const values = Object.values(dbRecord);
-
-        await this.prisma.$queryRawUnsafe(
-          `INSERT INTO "${safeTableName}" (${fields}) VALUES (${placeholders})`,
-          ...values
-        );
-
-        return { success: true, action: 'inserted' };
-      }
-
-    } catch (error) {
-      this.logger.error('❌ Incremental upsert failed', runId, {
-        operation: 'incremental_upsert_error',
-        table: tableName,
-        recordId,
-        error: error.message
-      });
-      throw error;
-    }
-  }
+  // Note: Now using DataSyncService.upsertRecordDirect for proper type handling and compatibility
 
   /**
    * Handle column errors (same as regular sync)
