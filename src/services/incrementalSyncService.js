@@ -75,33 +75,33 @@ class IncrementalSyncService {
       // Step 3: Process and sync new records to database
       const syncResult = await this.syncRecordsToDatabase(tableName, records, runId);
 
-      // Step 4: Update cursor position ONLY if sync was successful and no errors
-      if (syncResult.errors === 0) {
-        // Only update cursor if ALL records synced successfully
-        const newCursor = lastCursor + syncResult.synced;
+      // Step 4: Update cursor position based on how many records we FETCHED from API
+      // Cursor should advance by total records fetched, regardless of sync success/failure
+      if (records.length > 0) {
+        const newCursor = lastCursor + records.length;
         await this.updateLastCursor(tableName, newCursor, runId);
         
-        this.logger.info('✅ Cursor updated after successful sync', runId, {
+        this.logger.info('✅ Cursor updated based on fetched records', runId, {
           operation: 'cursor_update_success',
           table: tableName,
+          fetchedRecords: records.length,
           syncedRecords: syncResult.synced,
+          skippedRecords: syncResult.skipped,
           newCursor,
-          reason: 'all_records_synced_successfully'
+          reason: 'cursor_tracks_api_fetch_position'
         });
       } else {
-        // Don't update cursor if there were errors - keep it at current position
-        this.logger.warn('⚠️ Cursor NOT updated due to sync errors', runId, {
-          operation: 'cursor_update_skipped',
+        this.logger.info('📍 Cursor unchanged - no records fetched', runId, {
+          operation: 'cursor_unchanged',
           table: tableName,
-          errors: syncResult.errors,
           cursor: lastCursor,
-          reason: 'sync_had_errors_cursor_preserved'
+          reason: 'no_records_fetched_from_api'
         });
       }
 
       // Step 5: Complete sync logging
       const totalDuration = Date.now() - startTime;
-      const finalCursor = syncResult.errors === 0 ? lastCursor + syncResult.synced : lastCursor;
+      const finalCursor = records.length > 0 ? lastCursor + records.length : lastCursor;
       
       this.logger.info('✅ SYNC+ incremental sync completed', runId, {
         operation: 'incremental_sync_complete',
@@ -113,7 +113,7 @@ class IncrementalSyncService {
         errors: syncResult.errors,
         previousCursor: lastCursor,
         finalCursor: finalCursor,
-        cursorUpdated: syncResult.errors === 0,
+        cursorUpdated: records.length > 0,
         duration: totalDuration
       });
 
@@ -127,7 +127,7 @@ class IncrementalSyncService {
         errors: syncResult.errors,
         previousCursor: lastCursor,
         newCursor: finalCursor,
-        cursorUpdated: syncResult.errors === 0,
+        cursorUpdated: records.length > 0,
         duration: totalDuration,
         details: syncResult.details
       };
@@ -152,51 +152,33 @@ class IncrementalSyncService {
   }
 
   /**
-   * Get ROBUST cursor position by checking actual database state
-   * Runs before every sync to self-correct cursor position
+   * Get stored cursor position (no auto-correction)
+   * The cursor represents how many records we've ATTEMPTED TO FETCH from Bubble API
+   * NOT how many records are in our database (due to skips, errors, etc.)
    */
   async getLastCursor(tableName, runId) {
     try {
       // Ensure sync cursor tracking table exists
       await this.ensureSyncCursorTable();
 
-      // STEP 1: Get stored cursor position
+      // Get stored cursor position - this is the API position we should start from
       const cursorRecord = await prisma.sync_cursors.findUnique({
         where: { table_name: tableName }
       });
       const storedCursor = cursorRecord?.last_cursor || 0;
 
-      // STEP 2: Get ACTUAL record count from database (ROBUST DETECTION)
-      const actualCursor = await this.detectActualCursor(tableName, runId);
-
-      // STEP 3: Compare and self-correct if needed
-      if (actualCursor !== storedCursor) {
-        this.logger.warn('🔧 CURSOR MISMATCH DETECTED - Auto-correcting', runId, {
-          operation: 'cursor_self_correction',
-          table: tableName,
-          storedCursor,
-          actualCursor,
-          action: 'correcting_to_actual_count'
-        });
-
-        // Auto-correct the cursor to match actual database state
-        await this.updateLastCursor(tableName, actualCursor, runId);
-        
-        return actualCursor;
-      }
-
-      this.logger.info('📍 Cursor verified and correct', runId, {
-        operation: 'cursor_verified',
+      this.logger.info('📍 Using stored cursor position', runId, {
+        operation: 'cursor_retrieved',
         table: tableName,
-        cursor: actualCursor,
-        status: 'aligned_with_database'
+        cursor: storedCursor,
+        note: 'Cursor represents API fetch position, not database count'
       });
 
-      return actualCursor;
+      return storedCursor;
 
     } catch (error) {
-      this.logger.warn('⚠️ Failed cursor detection, starting from 0', runId, {
-        operation: 'cursor_detection_failed',
+      this.logger.warn('⚠️ Failed to get cursor, starting from 0', runId, {
+        operation: 'cursor_retrieval_failed',
         table: tableName,
         error: error.message,
         fallback: 'Starting from cursor 0'

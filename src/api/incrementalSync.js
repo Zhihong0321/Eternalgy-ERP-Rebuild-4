@@ -237,6 +237,92 @@ router.get('/cursors', async (req, res) => {
 });
 
 /**
+ * Force sync remaining records for a table
+ * POST /api/sync/table/{tableName}/sync-remaining
+ * 
+ * Attempts to sync the remaining records by trying different cursor positions
+ */
+router.post('/table/:tableName/sync-remaining', async (req, res) => {
+  const { tableName } = req.params;
+  const limit = parseInt(req.query.limit) || 100;
+
+  try {
+    if (!incrementalSyncService) {
+      return res.status(500).json({
+        success: false,
+        error: 'IncrementalSyncService not initialized'
+      });
+    }
+
+    console.log(`🔧 Attempting to sync remaining records for ${tableName}`);
+
+    // Step 1: Get current state
+    const { PrismaClient } = await import('@prisma/client');
+    const prisma = new PrismaClient();
+    
+    const currentCursor = await incrementalSyncService.getLastCursor(tableName, 'sync_remaining');
+    const actualCount = await incrementalSyncService.detectActualCursor(tableName, 'sync_remaining');
+    
+    console.log(`📊 Current state: cursor=${currentCursor}, database_count=${actualCount}`);
+
+    // Step 2: Try to fetch from different positions to find the missing records
+    let attemptResults = [];
+    let totalSynced = 0;
+    
+    // Try fetching from current cursor position with a higher limit
+    const fetchResult = await incrementalSyncService.fetchIncrementalData(tableName, currentCursor, limit, 'sync_remaining');
+    
+    if (fetchResult.success && fetchResult.records.length > 0) {
+      // Process the fetched records
+      const syncResult = await incrementalSyncService.syncRecordsToDatabase(tableName, fetchResult.records, 'sync_remaining');
+      
+      if (syncResult.errors === 0 && syncResult.synced > 0) {
+        // Update cursor
+        const newCursor = currentCursor + syncResult.synced;
+        await incrementalSyncService.updateLastCursor(tableName, newCursor, 'sync_remaining');
+        totalSynced = syncResult.synced;
+        
+        attemptResults.push({
+          position: currentCursor,
+          fetched: fetchResult.records.length,
+          synced: syncResult.synced,
+          skipped: syncResult.skipped,
+          errors: syncResult.errors
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      endpoint: 'sync_remaining',
+      table: tableName,
+      initialCursor: currentCursor,
+      initialDatabaseCount: actualCount,
+      totalSynced,
+      attempts: attemptResults,
+      message: totalSynced > 0 
+        ? `✅ Synced ${totalSynced} remaining records`
+        : '⚠️ No additional records found to sync',
+      recommendation: totalSynced === 0 
+        ? 'Try using regular SYNC button or check if all records are already synced'
+        : 'Continue using SYNC+ to fetch more records',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error(`❌ Sync remaining failed for ${tableName}:`, error.message);
+    
+    res.status(500).json({
+      success: false,
+      endpoint: 'sync_remaining',
+      table: tableName,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
  * Health check for incremental sync service
  * GET /api/sync/plus/health
  */
