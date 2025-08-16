@@ -36,6 +36,7 @@ const DataSync = () => {
     discoverAllRelationships,
     getRelationshipStatus,
     getAllRelationshipStatusesCached,
+    resetCursor,
     loading,
     error,
     syncProgress,
@@ -265,6 +266,29 @@ const DataSync = () => {
       console.error('Failed to discover all relationships:', error);
     } finally {
       setIsSyncing(prev => ({ ...prev, 'discover_all': false }));
+    }
+  };
+
+  const handleResetCursor = async (tableName: string) => {
+    const confirmReset = confirm(
+      `Are you sure you want to RESET the SYNC+ cursor for "${tableName}"?\n\nThis will:\n1. Reset cursor to position 0\n2. Next SYNC+ will start from the beginning\n3. May re-sync existing records (but won't duplicate)\n\nThis is useful for fixing stuck SYNC+ operations.`
+    );
+    
+    if (!confirmReset) return;
+    
+    setIsSyncing(prev => ({ ...prev, [`reset_cursor_${tableName}`]: true }));
+    
+    try {
+      const result = await resetCursor(tableName);
+      if (result) {
+        setTimeout(fetchSyncData, 1500); // Refresh to show updated status
+        alert(`✅ Cursor reset for ${tableName}. You can now run SYNC+ to fetch all records from the beginning.`);
+      }
+    } catch (error) {
+      console.error(`Failed to reset cursor for ${tableName}:`, error);
+      alert(`❌ Failed to reset cursor: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSyncing(prev => ({ ...prev, [`reset_cursor_${tableName}`]: false }));
     }
   };
 
@@ -732,6 +756,23 @@ const DataSync = () => {
                         <>
                           <RotateCcw className="mr-1 h-3 w-3" />
                           RECREATE
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={() => handleResetCursor(table.tablename)}
+                      disabled={loading || isSyncing[`reset_cursor_${table.tablename}`] || globalSyncLock}
+                      size="sm"
+                      variant="outline"
+                      className="w-24 border-red-200 text-red-600 hover:bg-red-50"
+                      title="Reset SYNC+ cursor to 0 - useful when SYNC+ gets stuck"
+                    >
+                      {isSyncing[`reset_cursor_${table.tablename}`] ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <RotateCcw className="mr-1 h-3 w-3" />
+                          RESET+
                         </>
                       )}
                     </Button>

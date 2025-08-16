@@ -253,6 +253,16 @@ export const useEternalgyAPI = () => {
     );
   };
 
+  // SYNC+ cursor management
+  const resetCursor = (tableName: string) =>
+    handleRequest(() => api.post(`/api/sync/table/${tableName}/reset-cursor`));
+
+  const setCursor = (tableName: string, position: number) =>
+    handleRequest(() => api.post(`/api/sync/table/${tableName}/set-cursor?position=${position}`));
+
+  const getCursors = () =>
+    handleRequest(() => api.get('/api/sync/cursors'));
+
   return {
     loading,
     error,
@@ -276,6 +286,10 @@ export const useEternalgyAPI = () => {
     getRelationshipStatus,
     getAllRelationshipStatuses,
     getAllRelationshipStatusesCached,
+    // SYNC+ cursor management
+    resetCursor,
+    setCursor,
+    getCursors,
     // Bubble.io specific methods
     getBubbleDataTypes,
     getBubbleData,
