@@ -35,6 +35,7 @@ const DataSync = () => {
     discoverRelationships,
     discoverAllRelationships,
     getRelationshipStatus,
+    getAllRelationshipStatuses,
     loading,
     error,
     syncProgress,
@@ -73,12 +74,26 @@ const DataSync = () => {
     if (tablesData && tablesData.tables) {
       const tables = tablesData.tables;
       
-      // REMOVED: Auto-discovery of relationship statuses on page load (was causing 4-minute delay)
-      // Tables will load instantly, relationship discovery can be done manually via "Discover All" button
-      setSyncTables(tables.map((table: any) => ({
-        ...table,
-        relationshipStatus: null // Will show "Not Discovered" badge
-      })));
+      // LOAD SAVED RELATIONSHIP STATUSES: Get existing discovery status from database (fast query)
+      try {
+        const allStatusesResult = await getAllRelationshipStatuses();
+        const statusMap = allStatusesResult?.statuses || {};
+        
+        // Map relationship statuses to tables - only shows saved status, no auto-discovery
+        const tablesWithStatus = tables.map((table: any) => ({
+          ...table,
+          relationshipStatus: statusMap[table.tablename] || null
+        }));
+        
+        setSyncTables(tablesWithStatus);
+      } catch (error) {
+        console.warn('Failed to load saved relationship statuses:', error);
+        // Fallback: show tables without status if loading fails
+        setSyncTables(tables.map((table: any) => ({
+          ...table,
+          relationshipStatus: null // Will show "Not Discovered" badge
+        })));
+      }
       
       // Initialize table limits with default value 3
       const initialLimits: Record<string, number> = {};
