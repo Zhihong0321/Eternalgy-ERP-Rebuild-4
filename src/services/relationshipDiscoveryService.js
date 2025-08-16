@@ -7,33 +7,19 @@ class RelationshipDiscoveryService {
   }
 
   /**
-   * Initialize the relationship discovery status table
+   * Initialize the relationship discovery status table (now using Prisma model)
    */
   async initializeStatusTable(runId) {
     try {
-      // Create the relationship discovery status table
-      await prisma.$executeRaw`
-        CREATE TABLE IF NOT EXISTS relationship_discovery_status (
-          id SERIAL PRIMARY KEY,
-          source_table TEXT NOT NULL,
-          source_field TEXT NOT NULL,
-          field_type TEXT NOT NULL, -- 'RELATIONAL_CONFIRMED', 'TEXT_ONLY'
-          link_status TEXT, -- 'LINKED', 'PENDING_LINK'
-          target_table TEXT,
-          last_checked TIMESTAMPTZ DEFAULT NOW(),
-          created_at TIMESTAMPTZ DEFAULT NOW(),
-          UNIQUE(source_table, source_field)
-        )
-      `;
-
-      this.logger.info('Relationship discovery status table initialized', runId, {
-        operation: 'status_table_init'
+      // Table is now managed by Prisma schema - no need to create manually
+      this.logger.info('Relationship discovery status table ready (Prisma managed)', runId, {
+        operation: 'status_table_ready'
       });
 
       return { success: true };
     } catch (error) {
-      this.logger.error('Failed to initialize status table', runId, {
-        operation: 'status_table_init_error',
+      this.logger.error('Failed to access status table', runId, {
+        operation: 'status_table_error',
         error: error.message
       });
       return { success: false, error: error.message };
@@ -130,16 +116,20 @@ class RelationshipDiscoveryService {
   }
 
   /**
-   * Get or create discovery status for a field
+   * Get or create discovery status for a field (using Prisma model)
    */
   async getFieldStatus(sourceTable, sourceField, runId) {
     try {
-      const status = await prisma.$queryRawUnsafe(`
-        SELECT * FROM relationship_discovery_status 
-        WHERE source_table = $1 AND source_field = $2
-      `, sourceTable, sourceField);
+      const status = await prisma.relationship_discovery_status.findUnique({
+        where: {
+          source_table_source_field: {
+            source_table: sourceTable,
+            source_field: sourceField
+          }
+        }
+      });
 
-      return status.length > 0 ? status[0] : null;
+      return status;
     } catch (error) {
       this.logger.warn('Failed to get field status', runId, {
         operation: 'get_field_status_error',
@@ -152,21 +142,32 @@ class RelationshipDiscoveryService {
   }
 
   /**
-   * Update discovery status for a field
+   * Update discovery status for a field (using Prisma model)
    */
   async updateFieldStatus(sourceTable, sourceField, fieldType, linkStatus, targetTable, runId) {
     try {
-      await prisma.$queryRawUnsafe(`
-        INSERT INTO relationship_discovery_status 
-        (source_table, source_field, field_type, link_status, target_table, last_checked)
-        VALUES ($1, $2, $3, $4, $5, NOW())
-        ON CONFLICT (source_table, source_field) 
-        DO UPDATE SET
-          field_type = $3,
-          link_status = $4,
-          target_table = $5,
-          last_checked = NOW()
-      `, sourceTable, sourceField, fieldType, linkStatus, targetTable);
+      await prisma.relationship_discovery_status.upsert({
+        where: {
+          source_table_source_field: {
+            source_table: sourceTable,
+            source_field: sourceField
+          }
+        },
+        update: {
+          field_type: fieldType,
+          link_status: linkStatus,
+          target_table: targetTable,
+          last_checked: new Date()
+        },
+        create: {
+          source_table: sourceTable,
+          source_field: sourceField,
+          field_type: fieldType,
+          link_status: linkStatus,
+          target_table: targetTable,
+          last_checked: new Date()
+        }
+      });
 
       this.logger.debug('Updated field status', runId, {
         operation: 'field_status_updated',
@@ -339,16 +340,19 @@ class RelationshipDiscoveryService {
   }
 
   /**
-   * Get relationship status summary for a table
+   * Get relationship status summary for a table (using Prisma model)
    */
   async getTableRelationshipStatus(tableName, runId) {
     try {
-      const statuses = await prisma.$queryRawUnsafe(`
-        SELECT field_type, link_status, COUNT(*) as count
-        FROM relationship_discovery_status 
-        WHERE source_table = $1
-        GROUP BY field_type, link_status
-      `, tableName);
+      const statuses = await prisma.relationship_discovery_status.groupBy({
+        by: ['field_type', 'link_status'],
+        where: {
+          source_table: tableName
+        },
+        _count: {
+          _all: true
+        }
+      });
 
       const summary = {
         total: 0,
@@ -360,7 +364,7 @@ class RelationshipDiscoveryService {
       };
 
       statuses.forEach(status => {
-        const count = parseInt(status.count);
+        const count = status._count._all;
         summary.total += count;
         
         if (status.field_type === 'RELATIONAL_CONFIRMED') {

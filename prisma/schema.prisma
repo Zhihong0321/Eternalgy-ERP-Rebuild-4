@@ -58,3 +58,16 @@ model sync_cursors {
   created_at    DateTime  @default(now())
   updated_at    DateTime  @default(now())
 }
+
+model relationship_discovery_status {
+  id           Int       @id @default(autoincrement())
+  source_table String
+  source_field String
+  field_type   String    // 'RELATIONAL_CONFIRMED', 'TEXT_ONLY'
+  link_status  String?   // 'LINKED', 'PENDING_LINK'
+  target_table String?
+  last_checked DateTime  @default(now())
+  created_at   DateTime  @default(now())
+
+  @@unique([source_table, source_field])
+}
