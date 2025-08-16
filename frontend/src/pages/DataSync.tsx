@@ -35,7 +35,7 @@ const DataSync = () => {
     discoverRelationships,
     discoverAllRelationships,
     getRelationshipStatus,
-    getAllRelationshipStatuses,
+    getAllRelationshipStatusesCached,
     loading,
     error,
     syncProgress,
@@ -74,9 +74,9 @@ const DataSync = () => {
     if (tablesData && tablesData.tables) {
       const tables = tablesData.tables;
       
-      // LOAD SAVED RELATIONSHIP STATUSES: Get existing discovery status from database (fast query)
+      // FAST READ: Get existing discovery status from database (no discovery, just read saved data)
       try {
-        const allStatusesResult = await getAllRelationshipStatuses();
+        const allStatusesResult = await getAllRelationshipStatusesCached();
         const statusMap = allStatusesResult?.statuses || {};
         
         // Map relationship statuses to tables - only shows saved status, no auto-discovery
@@ -87,7 +87,7 @@ const DataSync = () => {
         
         setSyncTables(tablesWithStatus);
       } catch (error) {
-        console.warn('Failed to load saved relationship statuses:', error);
+        console.warn('Failed to load cached relationship statuses:', error);
         // Fallback: show tables without status if loading fails
         setSyncTables(tables.map((table: any) => ({
           ...table,

@@ -242,6 +242,9 @@ export const useEternalgyAPI = () => {
   const getAllRelationshipStatuses = () => 
     handleRequest(() => api.get('/api/sync/relationship-statuses'));
 
+  const getAllRelationshipStatusesCached = () => 
+    handleRequest(() => api.get('/api/sync/relationship-statuses-cached'));
+
   const discoverAllRelationships = async () => {
     return await withSyncLock(
       'discover_all',
@@ -272,6 +275,7 @@ export const useEternalgyAPI = () => {
     discoverAllRelationships,
     getRelationshipStatus,
     getAllRelationshipStatuses,
+    getAllRelationshipStatusesCached,
     // Bubble.io specific methods
     getBubbleDataTypes,
     getBubbleData,

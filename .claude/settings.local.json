@@ -18,7 +18,8 @@
       "Bash(mv:*)",
       "Bash(npx tsc:*)",
       "Bash(npx prisma:*)",
-      "Bash(E:Eternalgy_ERP_Rebuild4local_build_push.bat)"
+      "Bash(E:Eternalgy_ERP_Rebuild4local_build_push.bat)",
+      "Bash(npm run:*)"
     ],
     "deny": [],
     "ask": [],

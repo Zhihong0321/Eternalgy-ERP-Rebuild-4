@@ -2,6 +2,7 @@ import express from 'express';
 import DataSyncService from '../services/dataSyncService.js';
 import BatchSyncService from '../services/batchSyncService.js';
 import RelationshipDiscoveryService from '../services/relationshipDiscoveryService.js';
+import prisma from '../lib/prisma.js';
 import { loggers } from '../utils/logger.js';
 
 const router = express.Router();
@@ -686,6 +687,102 @@ router.post('/discover-all', async (req, res) => {
     res.status(500).json({
       success: false,
       endpoint: 'discover_all',
+      error: error.message,
+      duration,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// GET /api/sync/relationship-statuses-cached - FAST read-only: Get saved relationship discovery status
+router.get('/relationship-statuses-cached', async (req, res) => {
+  const runId = logger.generateRunId();
+  const startTime = Date.now();
+  
+  logger.info('API request: Get cached relationship statuses (fast read-only)', runId, {
+    operation: 'api_request',
+    endpoint: '/api/sync/relationship-statuses-cached'
+  });
+
+  try {
+    // FAST QUERY: Direct read from relationship_discovery_status table
+    const savedStatuses = await prisma.relationship_discovery_status.groupBy({
+      by: ['source_table', 'field_type', 'link_status'],
+      _count: {
+        _all: true
+      }
+    });
+
+    // Group by table and calculate summary for each
+    const statuses = {};
+    
+    savedStatuses.forEach(status => {
+      const tableName = status.source_table;
+      
+      if (!statuses[tableName]) {
+        statuses[tableName] = {
+          total: 0,
+          relationalConfirmed: 0,
+          textOnly: 0,
+          linked: 0,
+          pendingLink: 0,
+          isRelationalReady: false
+        };
+      }
+      
+      const summary = statuses[tableName];
+      const count = status._count._all;
+      summary.total += count;
+      
+      if (status.field_type === 'RELATIONAL_CONFIRMED') {
+        summary.relationalConfirmed += count;
+        if (status.link_status === 'LINKED') {
+          summary.linked += count;
+        } else if (status.link_status === 'PENDING_LINK') {
+          summary.pendingLink += count;
+        }
+      } else if (status.field_type === 'TEXT_ONLY') {
+        summary.textOnly += count;
+      }
+    });
+
+    // Calculate isRelationalReady for each table
+    Object.values(statuses).forEach(summary => {
+      summary.isRelationalReady = summary.pendingLink === 0 && summary.total > 0;
+    });
+
+    const duration = Date.now() - startTime;
+
+    logger.info('API response: Cached relationship statuses retrieved', runId, {
+      operation: 'api_response',
+      endpoint: '/api/sync/relationship-statuses-cached',
+      status: 200,
+      tableCount: Object.keys(statuses).length,
+      duration
+    });
+
+    res.json({
+      success: true,
+      endpoint: 'relationship_statuses_cached',
+      tables: Object.keys(statuses).length,
+      statuses: statuses,
+      duration,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    
+    logger.error('API error: Get cached relationship statuses failed', runId, {
+      operation: 'api_error',
+      endpoint: '/api/sync/relationship-statuses-cached',
+      error: error.message,
+      duration
+    });
+
+    res.status(500).json({
+      success: false,
+      endpoint: 'relationship_statuses_cached',
       error: error.message,
       duration,
       timestamp: new Date().toISOString()
