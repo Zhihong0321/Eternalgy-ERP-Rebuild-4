@@ -416,29 +416,35 @@ router.post('/clear-patches', async (req, res) => {
     if (!tableName) {
       return res.status(400).json({
         success: false,
-        error: 'tableName is required in request body',
+        error: 'tableName is required in request body (use "all" to delete all patches)',
         timestamp: new Date().toISOString()
       });
     }
 
     // Get patches before deletion for logging
+    const whereClause = tableName === 'all' ? {} : { table_name: tableName };
     const existingPatches = await prisma.pending_schema_patches.findMany({
-      where: { table_name: tableName },
-      select: { id: true, field_name: true, status: true }
+      where: whereClause,
+      select: { id: true, table_name: true, field_name: true, status: true }
     });
 
-    // Delete all patches for the table (approved, pending, rejected)
+    // Delete patches (all or specific table)
     const deleteResult = await prisma.pending_schema_patches.deleteMany({
-      where: { table_name: tableName }
+      where: whereClause
     });
 
     const duration = Date.now() - startTime;
 
-    logger.info('✅ Cleared approved patches for table', runId, {
-      operation: 'clear_patches_success',
+    const operation = tableName === 'all' ? 'clear_all_patches_success' : 'clear_patches_success';
+    const message = tableName === 'all' 
+      ? `Cleared all ${deleteResult.count} patches from system. Fresh start for all tables.`
+      : `Cleared ${deleteResult.count} patches for ${tableName}. New patches can now be created for missing fields.`;
+
+    logger.info('✅ Cleared patches', runId, {
+      operation,
       tableName,
       patchesDeleted: deleteResult.count,
-      previousPatches: existingPatches.map(p => ({ id: p.id, field: p.field_name, status: p.status })),
+      previousPatches: existingPatches.map(p => ({ id: p.id, table: p.table_name, field: p.field_name, status: p.status })),
       duration
     });
 
@@ -448,7 +454,7 @@ router.post('/clear-patches', async (req, res) => {
       endpoint: 'clear_patches',
       tableName,
       patchesDeleted: deleteResult.count,
-      message: `Cleared ${deleteResult.count} patches for ${tableName}. New patches can now be created for missing fields.`,
+      message,
       previousPatches: existingPatches,
       duration,
       timestamp: new Date().toISOString()
