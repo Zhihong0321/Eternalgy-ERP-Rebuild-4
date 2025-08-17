@@ -341,7 +341,7 @@ router.get('/table/:tableName/diagnose-cursor', async (req, res) => {
 
     console.log(`🔍 Diagnosing cursor position ${position} for ${tableName}`);
 
-    const { BubbleService } = await import('../services/bubbleService.js');
+    const BubbleService = (await import('../services/bubbleService.js')).default;
     const bubbleService = new BubbleService();
 
     // Check records around the stuck position
