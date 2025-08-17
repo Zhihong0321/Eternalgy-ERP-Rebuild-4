@@ -78,11 +78,12 @@ class PendingPatchService {
         };
       }
 
-      // Check if request already exists
+      // Check if PENDING request already exists (ignore failed/rejected/approved ones)
       const existing = await prisma.pending_schema_patches.findFirst({
         where: {
           table_name: parsedError.tableName,
-          field_name: parsedError.fieldName
+          field_name: parsedError.fieldName,
+          status: 'pending' // Only check for pending status
         }
       });
 
@@ -91,7 +92,8 @@ class PendingPatchService {
           operation: 'pending_request_exists',
           table: parsedError.tableName,
           field: parsedError.fieldName,
-          existingId: existing.id
+          existingId: existing.id,
+          existingStatus: existing.status
         });
         
         return {
