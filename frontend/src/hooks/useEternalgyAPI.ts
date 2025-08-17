@@ -274,6 +274,9 @@ export const useEternalgyAPI = () => {
     return handleRequest(() => api.get(`/api/sync/discovery-logs${queryString ? '?' + queryString : ''}`));
   };
 
+  const migrateDiscoveryLogs = () =>
+    handleRequest(() => api.post('/api/sync/migrate-discovery-logs'));
+
   return {
     loading,
     error,
@@ -303,6 +306,7 @@ export const useEternalgyAPI = () => {
     getCursors,
     // Discovery logs
     getDiscoveryLogs,
+    migrateDiscoveryLogs,
     // Bubble.io specific methods
     getBubbleDataTypes,
     getBubbleData,

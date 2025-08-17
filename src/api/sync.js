@@ -1001,6 +1001,78 @@ router.post('/test/:tableName', async (req, res) => {
   }
 });
 
+// POST /api/sync/migrate-discovery-logs - Create discovery_logs table if it doesn't exist
+router.post('/migrate-discovery-logs', async (req, res) => {
+  const runId = logger.generateRunId();
+  const startTime = Date.now();
+  
+  logger.info('API request: Migrate discovery logs table', runId, {
+    operation: 'api_request',
+    endpoint: '/api/sync/migrate-discovery-logs'
+  });
+
+  try {
+    // Create discovery_logs table if it doesn't exist
+    await prisma.$executeRaw`
+      CREATE TABLE IF NOT EXISTS discovery_logs (
+        id SERIAL PRIMARY KEY,
+        run_id TEXT NOT NULL,
+        table_name TEXT NOT NULL,
+        field_name TEXT NOT NULL,
+        field_type TEXT NOT NULL,
+        link_status TEXT,
+        target_table TEXT,
+        sample_value TEXT,
+        reason TEXT,
+        bubble_id_count INTEGER,
+        discovered_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+
+    // Create indexes for performance
+    await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS idx_discovery_logs_run_id ON discovery_logs(run_id)`;
+    await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS idx_discovery_logs_table_name ON discovery_logs(table_name)`;
+    await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS idx_discovery_logs_discovered_at ON discovery_logs(discovered_at)`;
+
+    const duration = Date.now() - startTime;
+
+    logger.info('API response: Discovery logs table migration completed', runId, {
+      operation: 'api_response',
+      endpoint: '/api/sync/migrate-discovery-logs',
+      status: 200,
+      duration
+    });
+
+    res.json({
+      success: true,
+      endpoint: 'migrate_discovery_logs',
+      message: 'Discovery logs table created successfully',
+      tables_created: ['discovery_logs'],
+      indexes_created: ['idx_discovery_logs_run_id', 'idx_discovery_logs_table_name', 'idx_discovery_logs_discovered_at'],
+      duration,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    
+    logger.error('API error: Discovery logs migration failed', runId, {
+      operation: 'api_error',
+      endpoint: '/api/sync/migrate-discovery-logs',
+      error: error.message,
+      duration
+    });
+
+    res.status(500).json({
+      success: false,
+      endpoint: 'migrate_discovery_logs',
+      error: error.message,
+      duration,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // GET /api/sync/discovery-logs - Get detailed discovery logs with field-level information
 router.get('/discovery-logs', async (req, res) => {
   const runId = logger.generateRunId();

@@ -42,7 +42,7 @@ interface DiscoverySummary {
 }
 
 const DiscoveryLogs = () => {
-  const { getDiscoveryLogs, loading, error } = useEternalgyAPI();
+  const { getDiscoveryLogs, migrateDiscoveryLogs, loading, error } = useEternalgyAPI();
   
   const [logs, setLogs] = useState<DiscoveryLog[]>([]);
   const [summary, setSummary] = useState<DiscoverySummary[]>([]);
@@ -57,6 +57,7 @@ const DiscoveryLogs = () => {
     offset: 0,
     hasMore: false
   });
+  const [isMigrating, setIsMigrating] = useState(false);
 
   const fetchLogs = async (resetOffset = true) => {
     setIsRefreshing(true);
@@ -100,6 +101,23 @@ const DiscoveryLogs = () => {
     setTimeout(() => fetchLogs(true), 100);
   };
 
+  const handleMigration = async () => {
+    setIsMigrating(true);
+    try {
+      const result = await migrateDiscoveryLogs();
+      if (result) {
+        alert('✅ Discovery logs table created successfully! You can now use the Discovery Logs feature.');
+        // Refresh logs after migration
+        setTimeout(() => fetchLogs(true), 1000);
+      }
+    } catch (error) {
+      console.error('Migration failed:', error);
+      alert(`❌ Migration failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
   const getStatusBadge = (log: DiscoveryLog) => {
     if (log.field_type === 'TEXT_ONLY') {
       return <Badge variant="outline" className="text-gray-600">Text Field</Badge>;
@@ -139,6 +157,14 @@ const DiscoveryLogs = () => {
         </div>
         <div className="flex items-center space-x-2">
           <Button
+            onClick={handleMigration}
+            disabled={isMigrating}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Database className={`mr-2 h-4 w-4 ${isMigrating ? 'animate-spin' : ''}`} />
+            {isMigrating ? 'Creating Table...' : 'Setup Database'}
+          </Button>
+          <Button
             onClick={() => setViewMode(viewMode === 'summary' ? 'detailed' : 'summary')}
             variant="outline"
           >
@@ -160,7 +186,16 @@ const DiscoveryLogs = () => {
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>
+            {error.includes('does not exist') ? (
+              <div>
+                <div className="font-semibold">Database table not found</div>
+                <div className="mt-1">Click the "Setup Database" button above to create the discovery_logs table.</div>
+              </div>
+            ) : (
+              error
+            )}
+          </AlertDescription>
         </Alert>
       )}
 
