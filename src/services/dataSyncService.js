@@ -1237,10 +1237,14 @@ class DataSyncService {
         hasDoesNotExistText: error.message?.includes('does not exist')
       });
 
-      // Check if this is a "column does not exist" error (PostgreSQL error code 42703)
-      if (error.message && error.message.includes('column') && error.message.includes('does not exist')) {
-        this.logger.info('🔧 Detected missing column error - creating pending patch request', runId, {
-          operation: 'missing_column_detected',
+      // Check if this is a schema-related error
+      const isColumnMissingError = error.message && error.message.includes('column') && error.message.includes('does not exist'); // 42703
+      const isTypeMismatchError = error.message && error.message.includes('is of type') && error.message.includes('but expression is of type'); // 42804
+      
+      if (isColumnMissingError || isTypeMismatchError) {
+        const errorType = isColumnMissingError ? 'missing_column' : 'type_mismatch';
+        this.logger.info(`🔧 Detected ${errorType} error - creating pending patch request`, runId, {
+          operation: `${errorType}_detected`,
           table: tableName,
           error: error.message,
           action: 'creating_pending_request'

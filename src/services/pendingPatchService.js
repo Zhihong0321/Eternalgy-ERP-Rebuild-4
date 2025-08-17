@@ -148,28 +148,60 @@ class PendingPatchService {
    * Example: `column "achieved_tier_bonus__" of relation "agent_monthly_perf" does not exist`
    */
   parseColumnError(errorMessage) {
-    // Match pattern: column "field_name" of relation "table_name" does not exist
-    const match = errorMessage.match(/column "([^"]+)" of relation "([^"]+)" does not exist/);
+    // Pattern 1: Missing column (42703) - column "field_name" of relation "table_name" does not exist
+    const missingColumnMatch = errorMessage.match(/column "([^"]+)" of relation "([^"]+)" does not exist/);
     
-    if (!match) {
-      return null;
+    if (missingColumnMatch) {
+      const fieldName = missingColumnMatch[1];
+      const tableName = missingColumnMatch[2];
+      
+      // Try to guess original field name (reverse snake_case conversion)
+      const originalFieldName = this.guessOriginalFieldName(fieldName);
+      
+      // Suggest column type based on field name patterns
+      const suggestedType = this.suggestColumnType(fieldName);
+
+      return {
+        errorType: 'missing_column',
+        fieldName,
+        tableName,
+        originalFieldName,
+        suggestedType,
+        action: 'ADD_COLUMN'
+      };
     }
 
-    const fieldName = match[1];
-    const tableName = match[2];
+    // Pattern 2: Type mismatch (42804) - column "field_name" is of type integer but expression is of type text
+    const typeMismatchMatch = errorMessage.match(/column "([^"]+)" is of type (\w+) but expression is of type (\w+)/);
     
-    // Try to guess original field name (reverse snake_case conversion)
-    const originalFieldName = this.guessOriginalFieldName(fieldName);
-    
-    // Suggest column type based on field name patterns
-    const suggestedType = this.suggestColumnType(fieldName);
+    if (typeMismatchMatch) {
+      const fieldName = typeMismatchMatch[1];
+      const currentType = typeMismatchMatch[2].toUpperCase();
+      const attemptedType = typeMismatchMatch[3].toUpperCase();
+      
+      // Extract table name from error context if available
+      const tableMatch = errorMessage.match(/relation "([^"]+)"/);
+      const tableName = tableMatch ? tableMatch[1] : 'unknown_table';
+      
+      // Try to guess original field name
+      const originalFieldName = this.guessOriginalFieldName(fieldName);
+      
+      // For type mismatches, suggest the more permissive type (TEXT is safest)
+      const suggestedType = this.resolveBestType(currentType, attemptedType);
 
-    return {
-      fieldName,
-      tableName,
-      originalFieldName,
-      suggestedType
-    };
+      return {
+        errorType: 'type_mismatch',
+        fieldName,
+        tableName,
+        originalFieldName,
+        currentType,
+        attemptedType,
+        suggestedType,
+        action: 'ALTER_COLUMN_TYPE'
+      };
+    }
+
+    return null;
   }
 
   /**
@@ -219,6 +251,36 @@ class PendingPatchService {
     }
     
     return 'TEXT'; // Safe default
+  }
+
+  /**
+   * Resolve the best type when there's a type mismatch
+   * Rule: Choose the more permissive type (TEXT > INTEGER > etc)
+   */
+  resolveBestType(currentType, attemptedType) {
+    // Type hierarchy: TEXT is most permissive, can hold any value
+    const typeHierarchy = {
+      'TEXT': 4,
+      'VARCHAR': 3, 
+      'DECIMAL': 2,
+      'INTEGER': 1,
+      'BOOLEAN': 0
+    };
+
+    const currentRank = typeHierarchy[currentType] || 0;
+    const attemptedRank = typeHierarchy[attemptedType] || 0;
+
+    // Always prefer TEXT for safety when there's a conflict
+    if (currentType === 'INTEGER' && attemptedType === 'TEXT') {
+      return 'TEXT'; // INTEGER field receiving TEXT data → convert to TEXT
+    }
+    
+    if (currentType === 'DECIMAL' && attemptedType === 'TEXT') {
+      return 'TEXT'; // DECIMAL field receiving TEXT data → convert to TEXT
+    }
+
+    // Choose the more permissive type
+    return currentRank >= attemptedRank ? currentType : attemptedType;
   }
 
   /**

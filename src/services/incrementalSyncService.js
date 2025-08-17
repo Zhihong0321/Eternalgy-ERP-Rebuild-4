@@ -530,9 +530,13 @@ class IncrementalSyncService {
    */
   async handleColumnError(error, tableName, runId) {
     try {
-      if (error.message && error.message.includes('column') && error.message.includes('does not exist')) {
-        this.logger.info('🔧 SYNC+ detected missing column - creating pending patch request', runId, {
-          operation: 'incremental_missing_column_detected',
+      const isColumnMissingError = error.message && error.message.includes('column') && error.message.includes('does not exist'); // 42703
+      const isTypeMismatchError = error.message && error.message.includes('is of type') && error.message.includes('but expression is of type'); // 42804
+      
+      if (isColumnMissingError || isTypeMismatchError) {
+        const errorType = isColumnMissingError ? 'missing_column' : 'type_mismatch';
+        this.logger.info(`🔧 SYNC+ detected ${errorType} - creating pending patch request`, runId, {
+          operation: `incremental_${errorType}_detected`,
           table: tableName,
           error: error.message,
           type: 'SYNC_PLUS'
