@@ -37,6 +37,8 @@ const DataSync = () => {
     getRelationshipStatus,
     getAllRelationshipStatusesCached,
     resetCursor,
+    diagnoseCursor,
+    skipCursor,
     loading,
     error,
     syncProgress,
@@ -289,6 +291,83 @@ const DataSync = () => {
       alert(`❌ Failed to reset cursor: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSyncing(prev => ({ ...prev, [`reset_cursor_${tableName}`]: false }));
+    }
+  };
+
+  const handleDiagnoseCursor = async (tableName: string) => {
+    const position = prompt(`Enter cursor position to diagnose for ${tableName}:`, '6176');
+    if (!position) return;
+    
+    const positionNum = parseInt(position);
+    if (isNaN(positionNum) || positionNum < 0) {
+      alert('Please enter a valid position number (0 or greater)');
+      return;
+    }
+    
+    setIsSyncing(prev => ({ ...prev, [`diagnose_${tableName}`]: true }));
+    
+    try {
+      const result = await diagnoseCursor(tableName, positionNum, 10);
+      if (result) {
+        const { diagnostics, analysis, targetPosition, currentCursor } = result;
+        
+        let message = `🔍 Cursor Diagnosis for ${tableName}\n\n`;
+        message += `Target Position: ${targetPosition}\n`;
+        message += `Current Cursor: ${currentCursor}\n\n`;
+        
+        // Show problematic positions
+        const problems = diagnostics?.filter((d: any) => d.status !== 'success') || [];
+        if (problems.length > 0) {
+          message += `❌ Problems found:\n`;
+          problems.forEach((p: any) => {
+            message += `  Position ${p.position}: ${p.error || p.status}\n`;
+          });
+        }
+        
+        message += `\n💡 Recommendation: ${analysis?.recommendation || 'No specific recommendation'}`;
+        
+        alert(message);
+      }
+    } catch (error) {
+      console.error(`Failed to diagnose cursor for ${tableName}:`, error);
+      alert(`❌ Failed to diagnose cursor: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSyncing(prev => ({ ...prev, [`diagnose_${tableName}`]: false }));
+    }
+  };
+
+  const handleSkipCursor = async (tableName: string) => {
+    const input = prompt(`Skip cursor for ${tableName}:\n\nEnter position to advance to (e.g., 6177) or positions to skip (e.g., 6176,6177):`);
+    if (!input) return;
+    
+    try {
+      let skipPositions: number[] = [];
+      let advanceTo: number | undefined;
+      
+      if (input.includes(',')) {
+        // Multiple positions to skip
+        skipPositions = input.split(',').map(p => parseInt(p.trim())).filter(p => !isNaN(p));
+      } else {
+        // Single position to advance to
+        advanceTo = parseInt(input.trim());
+        if (isNaN(advanceTo)) {
+          alert('Please enter a valid number or comma-separated numbers');
+          return;
+        }
+      }
+      
+      setIsSyncing(prev => ({ ...prev, [`skip_${tableName}`]: true }));
+      
+      const result = await skipCursor(tableName, skipPositions, advanceTo);
+      if (result) {
+        setTimeout(fetchSyncData, 1500);
+        alert(`✅ Cursor advanced for ${tableName}. Previous: ${result.previousCursor}, New: ${result.newCursor}. Run SYNC+ to continue from new position.`);
+      }
+    } catch (error) {
+      console.error(`Failed to skip cursor for ${tableName}:`, error);
+      alert(`❌ Failed to skip cursor: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSyncing(prev => ({ ...prev, [`skip_${tableName}`]: false }));
     }
   };
 
@@ -773,6 +852,40 @@ const DataSync = () => {
                         <>
                           <RotateCcw className="mr-1 h-3 w-3" />
                           RESET+
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={() => handleDiagnoseCursor(table.tablename)}
+                      disabled={loading || isSyncing[`diagnose_${table.tablename}`] || globalSyncLock}
+                      size="sm"
+                      variant="outline"
+                      className="w-24 border-purple-200 text-purple-600 hover:bg-purple-50"
+                      title="Diagnose stuck cursor position - check what's happening at specific position"
+                    >
+                      {isSyncing[`diagnose_${table.tablename}`] ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Search className="mr-1 h-3 w-3" />
+                          DIAGNOSE
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={() => handleSkipCursor(table.tablename)}
+                      disabled={loading || isSyncing[`skip_${table.tablename}`] || globalSyncLock}
+                      size="sm"
+                      variant="outline"
+                      className="w-20 border-yellow-200 text-yellow-600 hover:bg-yellow-50"
+                      title="Skip problematic cursor position - advance to next position"
+                    >
+                      {isSyncing[`skip_${table.tablename}`] ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Zap className="mr-1 h-3 w-3" />
+                          SKIP
                         </>
                       )}
                     </Button>

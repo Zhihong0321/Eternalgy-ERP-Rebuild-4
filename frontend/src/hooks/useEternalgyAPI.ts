@@ -277,6 +277,20 @@ export const useEternalgyAPI = () => {
   const migrateDiscoveryLogs = () =>
     handleRequest(() => api.post('/api/sync/migrate-discovery-logs'));
 
+  // Cursor diagnostic tools
+  const diagnoseCursor = (tableName: string, position: number, range: number = 10) =>
+    handleRequest(() => api.get(`/api/sync/table/${tableName}/diagnose-cursor?position=${position}&range=${range}`));
+
+  const skipCursor = (tableName: string, skipPositions: number[], advanceTo?: number) => {
+    const params = new URLSearchParams();
+    if (skipPositions.length > 0) params.append('positions', skipPositions.join(','));
+    if (advanceTo) params.append('advanceTo', advanceTo.toString());
+    return handleRequest(() => api.post(`/api/sync/table/${tableName}/skip-cursor?${params.toString()}`));
+  };
+
+  const syncRemaining = (tableName: string, limit: number = 100) =>
+    handleRequest(() => api.post(`/api/sync/table/${tableName}/sync-remaining?limit=${limit}`));
+
   return {
     loading,
     error,
@@ -307,6 +321,10 @@ export const useEternalgyAPI = () => {
     // Discovery logs
     getDiscoveryLogs,
     migrateDiscoveryLogs,
+    // Cursor diagnostic tools
+    diagnoseCursor,
+    skipCursor,
+    syncRemaining,
     // Bubble.io specific methods
     getBubbleDataTypes,
     getBubbleData,

@@ -323,6 +323,161 @@ router.post('/table/:tableName/sync-remaining', async (req, res) => {
 });
 
 /**
+ * Diagnose stuck cursor by checking specific position
+ * GET /api/sync/table/{tableName}/diagnose-cursor?position=6176
+ */
+router.get('/table/:tableName/diagnose-cursor', async (req, res) => {
+  const { tableName } = req.params;
+  const position = parseInt(req.query.position) || 0;
+  const checkRange = parseInt(req.query.range) || 10;
+
+  try {
+    if (!incrementalSyncService) {
+      return res.status(500).json({
+        success: false,
+        error: 'IncrementalSyncService not initialized'
+      });
+    }
+
+    console.log(`🔍 Diagnosing cursor position ${position} for ${tableName}`);
+
+    const { BubbleService } = await import('../services/bubbleService.js');
+    const bubbleService = new BubbleService();
+
+    // Check records around the stuck position
+    const diagnostics = [];
+    
+    for (let i = Math.max(0, position - 5); i < position + checkRange; i++) {
+      try {
+        console.log(`Checking position ${i}...`);
+        
+        const fetchResult = await bubbleService.fetchDataType(tableName, {
+          limit: 1,
+          cursor: i,
+          includeEmpty: false
+        });
+
+        if (fetchResult.success) {
+          const record = fetchResult.records?.[0];
+          diagnostics.push({
+            position: i,
+            status: 'success',
+            hasRecord: !!record,
+            recordId: record?._id || record?.id || null,
+            recordData: record ? Object.keys(record).length : 0,
+            sample: record ? JSON.stringify(record).substring(0, 200) + '...' : null
+          });
+        } else {
+          diagnostics.push({
+            position: i,
+            status: 'error',
+            error: fetchResult.error || 'Unknown error',
+            hasRecord: false
+          });
+        }
+      } catch (error) {
+        diagnostics.push({
+          position: i,
+          status: 'exception',
+          error: error.message,
+          hasRecord: false
+        });
+      }
+    }
+
+    // Get current cursor status
+    const currentCursor = await incrementalSyncService.getLastCursor(tableName, 'diagnostic');
+    const actualCount = await incrementalSyncService.detectActualCursor(tableName, 'diagnostic');
+
+    res.json({
+      success: true,
+      endpoint: 'diagnose_cursor',
+      table: tableName,
+      targetPosition: position,
+      currentCursor,
+      actualDatabaseCount: actualCount,
+      diagnostics,
+      analysis: {
+        stuckAt: position,
+        possibleIssues: diagnostics.filter(d => d.status !== 'success'),
+        recommendation: diagnostics.find(d => d.position === position)?.status !== 'success' 
+          ? 'Skip problematic record at position ' + position
+          : 'No obvious issue found, try advancing cursor manually'
+      },
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error(`❌ Cursor diagnosis failed for ${tableName}:`, error.message);
+    
+    res.status(500).json({
+      success: false,
+      endpoint: 'diagnose_cursor',
+      table: tableName,
+      position: position,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * Skip problematic cursor position and advance
+ * POST /api/sync/table/{tableName}/skip-cursor?positions=6176,6177
+ */
+router.post('/table/:tableName/skip-cursor', async (req, res) => {
+  const { tableName } = req.params;
+  const skipPositions = req.query.positions?.split(',').map(p => parseInt(p)) || [];
+  const advanceTo = parseInt(req.query.advanceTo) || 0;
+
+  try {
+    if (!incrementalSyncService) {
+      return res.status(500).json({
+        success: false,
+        error: 'IncrementalSyncService not initialized'
+      });
+    }
+
+    const currentCursor = await incrementalSyncService.getLastCursor(tableName, 'skip_cursor');
+    
+    let newCursor;
+    if (advanceTo > 0) {
+      newCursor = advanceTo;
+    } else if (skipPositions.length > 0) {
+      newCursor = Math.max(...skipPositions) + 1;
+    } else {
+      newCursor = currentCursor + 1;
+    }
+
+    const result = await incrementalSyncService.setCursor(tableName, newCursor, 'manual_skip');
+
+    res.json({
+      success: true,
+      endpoint: 'skip_cursor',
+      table: tableName,
+      previousCursor: currentCursor,
+      newCursor: newCursor,
+      skippedPositions: skipPositions,
+      ...result,
+      message: `Cursor advanced from ${currentCursor} to ${newCursor}. Next SYNC+ will start from position ${newCursor}.`,
+      recommendation: 'Run SYNC+ now to continue fetching from the new position',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error(`❌ Skip cursor failed for ${tableName}:`, error.message);
+    
+    res.status(500).json({
+      success: false,
+      endpoint: 'skip_cursor',
+      table: tableName,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
  * Health check for incremental sync service
  * GET /api/sync/plus/health
  */
