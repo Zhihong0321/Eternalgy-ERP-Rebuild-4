@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, XCircle, Clock, Database, AlertTriangle, RefreshCw } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Database, AlertTriangle, RefreshCw, Trash2 } from 'lucide-react';
+import { useEternalgyAPI } from '@/hooks/useEternalgyAPI';
 
 // TypeScript interfaces for patch requests
 interface PatchRequest {
@@ -37,11 +38,14 @@ interface Message {
  * 4. User retries sync → Works!
  */
 const PendingPatches: React.FC = () => {
+  const { clearAllPatches } = useEternalgyAPI();
+  
   const [pendingRequests, setPendingRequests] = useState<PatchRequest[]>([]);
   const [history, setHistory] = useState<PatchRequest[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [message, setMessage] = useState<Message | null>(null);
+  const [isClearingAll, setIsClearingAll] = useState<boolean>(false);
 
   // Fetch pending requests and history
   const fetchData = async () => {
@@ -156,6 +160,42 @@ const PendingPatches: React.FC = () => {
     );
   };
 
+  // Handle clear all patches
+  const handleClearAll = async () => {
+    const confirmed = confirm(
+      'Are you sure you want to delete ALL pending schema patches?\n\n' +
+      'This will remove:\n' +
+      '• All pending patches\n' +
+      '• All approved patches\n' +
+      '• All rejected patches\n' +
+      '• All patch history\n\n' +
+      'This action cannot be undone and will give you a completely clean slate.'
+    );
+    
+    if (!confirmed) return;
+    
+    setIsClearingAll(true);
+    try {
+      const result = await clearAllPatches();
+      if (result) {
+        setMessage({ 
+          type: 'success', 
+          text: `✅ All patches cleared successfully! Deleted ${result.patchesDeleted} patches. Fresh start for all tables.`
+        });
+        // Refresh the data to show empty state
+        await fetchData();
+      }
+    } catch (error) {
+      console.error('Failed to clear all patches:', error);
+      setMessage({ 
+        type: 'error', 
+        text: '❌ Failed to clear all patches. Please try again or check server logs.' 
+      });
+    } finally {
+      setIsClearingAll(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -170,10 +210,21 @@ const PendingPatches: React.FC = () => {
             Review and approve missing schema fields from sync operations
           </p>
         </div>
-        <Button onClick={fetchData} disabled={loading} variant="outline">
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center space-x-2">
+          <Button 
+            onClick={handleClearAll} 
+            disabled={loading || isClearingAll} 
+            variant="destructive"
+            className="bg-red-600 hover:bg-red-700"
+          >
+            <Trash2 className={`h-4 w-4 mr-2 ${isClearingAll ? 'animate-spin' : ''}`} />
+            {isClearingAll ? 'Clearing...' : 'Clear All Patches'}
+          </Button>
+          <Button onClick={fetchData} disabled={loading} variant="outline">
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Message Alert */}

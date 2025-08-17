@@ -277,6 +277,10 @@ export const useEternalgyAPI = () => {
   const migrateDiscoveryLogs = () =>
     handleRequest(() => api.post('/api/sync/migrate-discovery-logs'));
 
+  // Clear all pending patches
+  const clearAllPatches = () =>
+    handleRequest(() => api.post('/api/schema/clear-patches', { tableName: 'all' }));
+
   // Cursor diagnostic tools
   const diagnoseCursor = (tableName: string, position: number, range: number = 10) =>
     handleRequest(() => api.get(`/api/sync/table/${tableName}/diagnose-cursor?position=${position}&range=${range}`));
@@ -321,6 +325,8 @@ export const useEternalgyAPI = () => {
     // Discovery logs
     getDiscoveryLogs,
     migrateDiscoveryLogs,
+    // Clear all patches
+    clearAllPatches,
     // Cursor diagnostic tools
     diagnoseCursor,
     skipCursor,
