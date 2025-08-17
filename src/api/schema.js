@@ -400,4 +400,81 @@ router.post('/recreate-table/:tableName', async (req, res) => {
   }
 });
 
+// POST /api/schema/clear-patches - Clear approved patches for a specific table
+router.post('/clear-patches', async (req, res) => {
+  const runId = logger.generateRunId();
+  const startTime = Date.now();
+  const { tableName } = req.body;
+  
+  logger.info('API request: Clear approved patches for table', runId, {
+    operation: 'api_request',
+    endpoint: '/api/schema/clear-patches',
+    tableName
+  });
+  
+  try {
+    if (!tableName) {
+      return res.status(400).json({
+        success: false,
+        error: 'tableName is required in request body',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Get patches before deletion for logging
+    const existingPatches = await prisma.pending_schema_patches.findMany({
+      where: { table_name: tableName },
+      select: { id: true, field_name: true, status: true }
+    });
+
+    // Delete all patches for the table (approved, pending, rejected)
+    const deleteResult = await prisma.pending_schema_patches.deleteMany({
+      where: { table_name: tableName }
+    });
+
+    const duration = Date.now() - startTime;
+
+    logger.info('✅ Cleared approved patches for table', runId, {
+      operation: 'clear_patches_success',
+      tableName,
+      patchesDeleted: deleteResult.count,
+      previousPatches: existingPatches.map(p => ({ id: p.id, field: p.field_name, status: p.status })),
+      duration
+    });
+
+    res.json({
+      success: true,
+      runId,
+      endpoint: 'clear_patches',
+      tableName,
+      patchesDeleted: deleteResult.count,
+      message: `Cleared ${deleteResult.count} patches for ${tableName}. New patches can now be created for missing fields.`,
+      previousPatches: existingPatches,
+      duration,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    
+    logger.error('❌ Failed to clear patches', runId, {
+      operation: 'api_error',
+      endpoint: '/api/schema/clear-patches',
+      tableName,
+      error: error.message,
+      duration
+    });
+
+    res.status(500).json({
+      success: false,
+      runId,
+      endpoint: 'clear_patches',
+      tableName,
+      error: error.message,
+      duration,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 export default router;
