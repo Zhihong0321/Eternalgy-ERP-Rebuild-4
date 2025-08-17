@@ -106,6 +106,12 @@ const dataManagementItems: NavigationItem[] = [
     href: '/pending-patches',
   },
   {
+    id: 'discovery-logs',
+    label: 'Discovery Logs',
+    icon: FileText,
+    href: '/discovery-logs',
+  },
+  {
     id: 'system-status',
     label: 'System Status',
     icon: Activity,

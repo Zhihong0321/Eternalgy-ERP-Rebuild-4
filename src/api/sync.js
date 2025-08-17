@@ -1001,4 +1001,107 @@ router.post('/test/:tableName', async (req, res) => {
   }
 });
 
+// GET /api/sync/discovery-logs - Get detailed discovery logs with field-level information
+router.get('/discovery-logs', async (req, res) => {
+  const runId = logger.generateRunId();
+  const startTime = Date.now();
+  const { table, run_id, limit = 100, offset = 0 } = req.query;
+  
+  logger.info('API request: Get discovery logs', runId, {
+    operation: 'api_request',
+    endpoint: '/api/sync/discovery-logs',
+    filters: { table, run_id, limit, offset }
+  });
+
+  try {
+    // Build where conditions
+    const where = {};
+    if (table) where.table_name = table;
+    if (run_id) where.run_id = run_id;
+
+    // Get discovery logs with pagination
+    const logs = await prisma.discovery_logs.findMany({
+      where,
+      orderBy: { discovered_at: 'desc' },
+      take: parseInt(limit),
+      skip: parseInt(offset)
+    });
+
+    // Get total count for pagination
+    const totalCount = await prisma.discovery_logs.count({ where });
+
+    // Group logs by table and run for summary
+    const summary = {};
+    logs.forEach(log => {
+      const key = `${log.table_name}_${log.run_id}`;
+      if (!summary[key]) {
+        summary[key] = {
+          table_name: log.table_name,
+          run_id: log.run_id,
+          discovered_at: log.discovered_at,
+          total_fields: 0,
+          linked_fields: 0,
+          pending_fields: 0,
+          text_fields: 0
+        };
+      }
+      
+      summary[key].total_fields++;
+      if (log.field_type === 'TEXT_ONLY') {
+        summary[key].text_fields++;
+      } else if (log.link_status === 'LINKED') {
+        summary[key].linked_fields++;
+      } else if (log.link_status === 'PENDING_LINK') {
+        summary[key].pending_fields++;
+      }
+    });
+
+    const duration = Date.now() - startTime;
+
+    logger.info('API response: Discovery logs retrieved', runId, {
+      operation: 'api_response',
+      endpoint: '/api/sync/discovery-logs',
+      status: 200,
+      logCount: logs.length,
+      totalCount,
+      summaryCount: Object.keys(summary).length,
+      duration
+    });
+
+    res.json({
+      success: true,
+      endpoint: 'discovery_logs',
+      logs: logs,
+      summary: Object.values(summary),
+      pagination: {
+        total: totalCount,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: parseInt(offset) + logs.length < totalCount
+      },
+      filters: { table, run_id },
+      duration,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    
+    logger.error('API error: Get discovery logs failed', runId, {
+      operation: 'api_error',
+      endpoint: '/api/sync/discovery-logs',
+      error: error.message,
+      duration
+    });
+
+    res.status(500).json({
+      success: false,
+      endpoint: 'discovery_logs',
+      error: error.message,
+      duration,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 export default router;

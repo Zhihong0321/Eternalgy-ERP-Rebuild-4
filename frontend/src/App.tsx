@@ -6,6 +6,7 @@ import DataSync from '@/pages/DataSync';
 import DataBrowser from '@/pages/DataBrowser';
 import SchemaDescription from '@/pages/SchemaDescription';
 import PendingPatches from '@/pages/PendingPatches';
+import DiscoveryLogs from '@/pages/DiscoveryLogs';
 import './App.css';
 
 // Create a client
@@ -45,6 +46,7 @@ function App() {
             <Route path="data-browser" element={<DataBrowser />} />
             <Route path="schema-description" element={<SchemaDescription />} />
             <Route path="pending-patches" element={<PendingPatches />} />
+            <Route path="discovery-logs" element={<DiscoveryLogs />} />
             <Route path="system-status" element={<PlaceholderPage title="System Status" />} />
             
             {/* Sales Module */}

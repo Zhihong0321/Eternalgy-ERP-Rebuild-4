@@ -191,6 +191,48 @@ class RelationshipDiscoveryService {
   }
 
   /**
+   * Create detailed discovery log entry for a field
+   */
+  async createDiscoveryLog(runId, tableName, fieldName, fieldType, linkStatus, targetTable, sampleValue, reason, bubbleIdCount = null) {
+    try {
+      await prisma.discovery_logs.create({
+        data: {
+          run_id: runId,
+          table_name: tableName,
+          field_name: fieldName,
+          field_type: fieldType,
+          link_status: linkStatus,
+          target_table: targetTable,
+          sample_value: sampleValue ? sampleValue.substring(0, 100) : null, // Limit sample value length
+          reason: reason,
+          bubble_id_count: bubbleIdCount,
+          discovered_at: new Date()
+        }
+      });
+
+      this.logger.debug('Created discovery log entry', runId, {
+        operation: 'discovery_log_created',
+        tableName,
+        fieldName,
+        fieldType,
+        linkStatus,
+        reason
+      });
+
+      return { success: true };
+    } catch (error) {
+      this.logger.error('Failed to create discovery log', runId, {
+        operation: 'create_discovery_log_error',
+        tableName,
+        fieldName,
+        error: error.message
+      });
+      // Don't fail the discovery process if logging fails
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Discover relationships for a single table
    */
   async discoverTableRelationships(tableName, runId) {
@@ -250,10 +292,26 @@ class RelationshipDiscoveryService {
 
         // Step 1: Is this relational data?
         const isRelational = this.isRelationalField(fieldValues, fieldName);
+        const sampleValue = fieldValues[0];
+        const sampleValueStr = Array.isArray(sampleValue) ? sampleValue.join(', ') : String(sampleValue);
         
         if (!isRelational) {
           // CONFIRMED: This is text data - never check again
           await this.updateFieldStatus(tableName, fieldName, 'TEXT_ONLY', null, null, runId);
+          
+          // CREATE DETAILED LOG
+          await this.createDiscoveryLog(
+            runId,
+            tableName,
+            fieldName,
+            'TEXT_ONLY',
+            null,
+            null,
+            sampleValueStr,
+            `Field contains text data, not Bubble IDs. Sample: ${sampleValueStr.substring(0, 50)}`,
+            0
+          );
+          
           this.logger.info('Field confirmed as text data', runId, {
             operation: 'field_confirmed_text',
             table: tableName,
@@ -264,6 +322,7 @@ class RelationshipDiscoveryService {
         }
 
         // CONFIRMED: This is relational data
+        const bubbleIdCount = fieldValues.length;
         this.logger.info('Field confirmed as relational data', runId, {
           operation: 'field_confirmed_relational',
           table: tableName,
@@ -278,6 +337,20 @@ class RelationshipDiscoveryService {
         if (targetTable) {
           // SUCCESS: Link found
           await this.updateFieldStatus(tableName, fieldName, 'RELATIONAL_CONFIRMED', 'LINKED', targetTable, runId);
+          
+          // CREATE DETAILED LOG
+          await this.createDiscoveryLog(
+            runId,
+            tableName,
+            fieldName,
+            'RELATIONAL_CONFIRMED',
+            'LINKED',
+            targetTable,
+            sampleValueStr,
+            `Successfully linked to ${targetTable} table. Found matching records.`,
+            bubbleIdCount
+          );
+          
           relationships.push({
             sourceTable: tableName,
             sourceField: fieldName,
@@ -294,6 +367,20 @@ class RelationshipDiscoveryService {
         } else {
           // PENDING: Target data not synced yet
           await this.updateFieldStatus(tableName, fieldName, 'RELATIONAL_CONFIRMED', 'PENDING_LINK', null, runId);
+          
+          // CREATE DETAILED LOG
+          await this.createDiscoveryLog(
+            runId,
+            tableName,
+            fieldName,
+            'RELATIONAL_CONFIRMED',
+            'PENDING_LINK',
+            null,
+            sampleValueStr,
+            `Field contains Bubble IDs but target table not found. Target data may not be synced yet. Sample ID: ${sampleBubbleId}`,
+            bubbleIdCount
+          );
+          
           relationships.push({
             sourceTable: tableName,
             sourceField: fieldName,

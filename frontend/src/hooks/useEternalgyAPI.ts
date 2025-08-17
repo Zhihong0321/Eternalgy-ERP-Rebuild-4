@@ -263,6 +263,17 @@ export const useEternalgyAPI = () => {
   const getCursors = () =>
     handleRequest(() => api.get('/api/sync/cursors'));
 
+  const getDiscoveryLogs = (filters?: { table?: string; run_id?: string; limit?: number; offset?: number }) => {
+    const params = new URLSearchParams();
+    if (filters?.table) params.append('table', filters.table);
+    if (filters?.run_id) params.append('run_id', filters.run_id);
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    if (filters?.offset) params.append('offset', filters.offset.toString());
+    
+    const queryString = params.toString();
+    return handleRequest(() => api.get(`/api/sync/discovery-logs${queryString ? '?' + queryString : ''}`));
+  };
+
   return {
     loading,
     error,
@@ -290,6 +301,8 @@ export const useEternalgyAPI = () => {
     resetCursor,
     setCursor,
     getCursors,
+    // Discovery logs
+    getDiscoveryLogs,
     // Bubble.io specific methods
     getBubbleDataTypes,
     getBubbleData,

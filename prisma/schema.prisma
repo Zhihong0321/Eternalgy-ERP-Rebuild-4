@@ -71,3 +71,21 @@ model relationship_discovery_status {
 
   @@unique([source_table, source_field])
 }
+
+model discovery_logs {
+  id             Int       @id @default(autoincrement())
+  run_id         String
+  table_name     String
+  field_name     String
+  field_type     String    // 'RELATIONAL_CONFIRMED', 'TEXT_ONLY'
+  link_status    String?   // 'LINKED', 'PENDING_LINK', 'NOT_FOUND'
+  target_table   String?
+  sample_value   String?   // Sample field value for debugging
+  reason         String?   // Detailed reason why field is pending/failed
+  bubble_id_count Int?     // How many bubble IDs found in this field
+  discovered_at  DateTime  @default(now())
+
+  @@index([run_id])
+  @@index([table_name])
+  @@index([discovered_at])
+}
