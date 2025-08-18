@@ -323,8 +323,24 @@ class PendingPatchService {
         };
       }
 
-      // Execute the ALTER TABLE command
-      const sql = `ALTER TABLE "${request.table_name}" ADD COLUMN IF NOT EXISTS "${request.field_name}" ${request.suggested_type}`;
+      // Execute the appropriate ALTER TABLE command based on error type
+      let sql;
+      let actionDescription;
+      
+      // Check if this is a type mismatch error (needs ALTER COLUMN TYPE)
+      const isTypeMismatch = request.error_message && 
+                            request.error_message.includes('is of type') && 
+                            request.error_message.includes('but expression is of type');
+      
+      if (isTypeMismatch) {
+        // ALTER COLUMN TYPE for type mismatches (INTEGER → TEXT)
+        sql = `ALTER TABLE "${request.table_name}" ALTER COLUMN "${request.field_name}" TYPE ${request.suggested_type} USING "${request.field_name}"::${request.suggested_type}`;
+        actionDescription = `Changed column type to ${request.suggested_type}`;
+      } else {
+        // ADD COLUMN for missing fields
+        sql = `ALTER TABLE "${request.table_name}" ADD COLUMN IF NOT EXISTS "${request.field_name}" ${request.suggested_type}`;
+        actionDescription = `Added new column with type ${request.suggested_type}`;
+      }
       
       await prisma.$executeRawUnsafe(sql);
 
@@ -350,10 +366,11 @@ class PendingPatchService {
 
       return {
         success: true,
-        message: 'Patch approved and executed successfully',
+        message: `✅ ${actionDescription}`,
         sql: sql,
         field: request.field_name,
-        table: request.table_name
+        table: request.table_name,
+        action: isTypeMismatch ? 'ALTER_COLUMN_TYPE' : 'ADD_COLUMN'
       };
 
     } catch (error) {
