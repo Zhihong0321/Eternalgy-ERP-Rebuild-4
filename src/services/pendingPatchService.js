@@ -68,7 +68,7 @@ class PendingPatchService {
       await this.ensurePendingPatchTable();
       
       // Parse the error message to extract missing field info
-      const parsedError = this.parseColumnError(errorMessage);
+      const parsedError = this.parseColumnError(errorMessage, context.table);
       
       if (!parsedError) {
         return {
@@ -149,7 +149,7 @@ class PendingPatchService {
    * Parse "column does not exist" error to extract field info
    * Example: `column "achieved_tier_bonus__" of relation "agent_monthly_perf" does not exist`
    */
-  parseColumnError(errorMessage) {
+  parseColumnError(errorMessage, contextTableName = null) {
     // Pattern 1: Missing column (42703) - column "field_name" of relation "table_name" does not exist
     const missingColumnMatch = errorMessage.match(/column "([^"]+)" of relation "([^"]+)" does not exist/);
     
@@ -181,9 +181,12 @@ class PendingPatchService {
       const currentType = typeMismatchMatch[2].toUpperCase();
       const attemptedType = typeMismatchMatch[3].toUpperCase();
       
-      // Extract table name from error context if available
-      const tableMatch = errorMessage.match(/relation "([^"]+)"/);
-      const tableName = tableMatch ? tableMatch[1] : 'unknown_table';
+      // Use context table name if available, otherwise try to extract from error
+      let tableName = contextTableName;
+      if (!tableName) {
+        const tableMatch = errorMessage.match(/relation "([^"]+)"/);
+        tableName = tableMatch ? tableMatch[1] : 'unknown_table';
+      }
       
       // Try to guess original field name
       const originalFieldName = this.guessOriginalFieldName(fieldName);
